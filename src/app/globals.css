@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+/*
+  Privi brand theme, shared with website (PRIVI_Website_Design_Brief.md
+  Section 1). The Admin Portal is a data-dense desktop tool (forms, tables),
+  so it uses the same ivory-based light surface as the website's own forms
+  rather than the app's fixed dark charcoal theme — charcoal remains the
+  accent/header colour, not the working background.
+*/
+
+:root {
+  --color-charcoal: #2f2f37;
+  --color-ivory: #f7f6f2;
+  --color-teal: #6fa7a1;
+
+  --color-muted-dark: #6f6e68;
+  --color-muted: #8a8983;
+  --color-muted-light: #c9c7c0;
+  --color-border-hairline: #e5e3da;
+  --color-border-hairline-2: #efede5;
+  --color-note-bg: #fff9e8;
+
+  /* status colours for record states (Draft/Active/Scheduled/Expired/etc.) */
+  --color-status-success: #3f7d5c;
+  --color-status-warning: #b8860b;
+  --color-status-danger: #b3423a;
+
+  /* =========================================================
+     PRIVI GOLD MATERIAL — ported unchanged from website/src/app/globals.css
+     (privi_gold_material_code.css / privi_gold_p_logo.svg at project root).
+     Applies to every gold logo, icon, divider, button border, accent and
+     decorative text element, site-wide. Carry unchanged into the App too.
+     ========================================================= */
+  --privi-gold-light: #f8df82;
+  --privi-gold-highlight: #f2d16b;
+  --privi-gold-mid: #e4bc50;
+  --privi-gold-deep: #cfa03a;
+
+  --privi-gold: linear-gradient(
+    180deg,
+    var(--privi-gold-light) 0%,
+    var(--privi-gold-highlight) 32%,
+    var(--privi-gold-mid) 68%,
+    var(--privi-gold-deep) 100%
+  );
+
+  /* Flat fallback for the rare spot a gradient can't be used (e.g. a
+     dashed border, which the border-gradient trick below can't render as
+     dashes). Not for general use — prefer the gradient classes. */
+  --color-gold: var(--privi-gold-mid);
+}
+
+@theme inline {
+  --color-charcoal: var(--color-charcoal);
+  --color-ivory: var(--color-ivory);
+  --color-gold: var(--color-gold);
+  --color-teal: var(--color-teal);
+  --color-muted-dark: var(--color-muted-dark);
+  --color-muted: var(--color-muted);
+  --color-muted-light: var(--color-muted-light);
+  --color-border-hairline: var(--color-border-hairline);
+  --color-border-hairline-2: var(--color-border-hairline-2);
+  --color-note-bg: var(--color-note-bg);
+  --color-status-success: var(--color-status-success);
+  --color-status-warning: var(--color-status-warning);
+  --color-status-danger: var(--color-status-danger);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+}
+
+@layer base {
+  body {
+    background: var(--color-ivory);
+    color: var(--color-charcoal);
+    font-family: var(--font-sans);
+  }
+
+  a {
+    color: var(--color-gold);
+    text-decoration: none;
+  }
+
+  /* Any link left as plain `text-gold` (not explicitly given
+     .privi-gold-text) still gets the satin gradient, not flat gold. */
+  a.text-gold {
+    background: var(--privi-gold);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* Filled gold shapes, icons and surfaces (dividers, ribbons, accents) */
+.privi-gold-fill {
+  background: var(--privi-gold);
+}
+
+/* Gold text/icon glyphs — background-clip works the same regardless of
+   what's behind the element, no surface-matching needed. */
+.privi-gold-text {
+  background: var(--privi-gold);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Gold divider */
+.privi-gold-divider {
+  border: 0;
+  height: 2px;
+  background: var(--privi-gold);
+}
+
+/* Gold button/card border. A gradient can't be assigned directly to
+   border-color, so two background layers are used: an opaque layer
+   clipped to padding-box (the element's own surface colour — set via
+   --gold-border-bg, e.g. [--gold-border-bg:var(--color-teal)]) sitting
+   under the gradient clipped to border-box. Pair with a Tailwind
+   border-width/style utility (border, border-[1.5px], etc.) — this class
+   only supplies colour. */
+.privi-gold-border {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--gold-border-bg, #ffffff), var(--gold-border-bg, #ffffff))
+      padding-box,
+    var(--privi-gold) border-box;
+}
+
+/* Category icons (category_icons/README.md) are inlined SVGs using
+   stroke="currentColor" with no explicit width/height — this makes them
+   fill their wrapping span so CategoryIcon's className controls size, and
+   tint via the span's `color`. */
+.category-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}

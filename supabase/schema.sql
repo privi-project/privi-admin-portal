@@ -1,0 +1,400 @@
+-- Privi Admin Portal schema addition — run this once in the Supabase SQL
+-- Editor (Project > SQL Editor > New query, paste, Run), AFTER
+-- website/supabase/schema.sql has already been applied to this project.
+--
+-- This is the SAME Supabase project as website/ (PRIVI_Backend_Schema_Reference.md).
+-- This file only ADDS to that schema — it never touches public.profiles,
+-- public.return_to_app_tokens, or the handle_new_user() trigger, all of
+-- which are website-owned and already deployed.
+
+-- Admin/staff identity table. An auth.users row is only ever treated as an
+-- admin if a matching row exists here — RLS grants zero access to anon/
+-- authenticated roles (no policies below), so only server-side code using
+-- the service_role key can read or write it. Same zero-policy pattern as
+-- public.return_to_app_tokens.
+--
+-- Note: creating the auth.users row for an admin (see README bootstrap
+-- steps) still fires website's handle_new_user() trigger and creates an
+-- unused public.profiles row alongside this one — harmless, expected, not
+-- worth special-casing in a trigger that website owns and depends on.
+create table if not exists public.admin_users (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text not null unique,
+  display_name text,
+  created_at timestamptz not null default now(),
+  last_login_at timestamptz,
+  failed_login_count integer not null default 0,
+  locked_until timestamptz
+);
+
+alter table public.admin_users enable row level security;
+-- Intentionally no policies — service_role-only access.
+
+-- Simplified activity log (Admin_Portal_Structure.docx Section 11: "a
+-- single chronological activity log — what changed, when, on which record
+-- ... No old-value/new-value diffing"). Every admin mutation across the
+-- portal (business/location/offer/member/notification changes) writes one
+-- row here via src/lib/activity/log.ts. Doubles as Dashboard's "Recent
+-- activity" (Section 2.3) once the Dashboard is built.
+--
+-- admin_email/entity_label are deliberately denormalized snapshots (not
+-- joins) so log entries stay readable even if the admin account or the
+-- record itself is later deleted/archived/renamed.
+create table if not exists public.admin_activity_log (
+  id uuid primary key default gen_random_uuid(),
+  admin_id uuid references public.admin_users(id) on delete set null,
+  admin_email text not null,
+  action text not null,
+  entity_type text not null,
+  entity_id uuid,
+  entity_label text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.admin_activity_log enable row level security;
+-- Intentionally no policies — service_role-only access, same pattern as
+-- admin_users.
+
+create index if not exists admin_activity_log_created_at_idx
+  on public.admin_activity_log (created_at desc);
+
+-- Business categories (Admin_Portal_Structure.docx Section 12: "add/edit/
+-- order/activate/deactivate, icon assignment"). Founder-managed — this
+-- table is seeded once from category_icons/categories.json (13 initial
+-- categories with real commissioned icons), then the admin CRUD screen is
+-- the operational source of truth from there. `slug` doubles as the icon
+-- filename: /category-icons/svg/{slug}.svg and /category-icons/png/{size}/{slug}.png.
+--
+-- Unlike admin_users/admin_activity_log, this IS publicly readable — it's
+-- non-sensitive reference data the App and Website will need to query
+-- directly (with the anon key) to show category browsing to members, per
+-- the shared-Supabase-project architecture. Admin mutations still go
+-- through the service_role client as usual, regardless of this policy.
+create table if not exists public.categories (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  label text not null,
+  display_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.categories enable row level security;
+
+create policy "Anyone can view active categories"
+  on public.categories for select
+  using (is_active = true);
+
+-- System-wide config (Admin_Portal_Structure.docx Section 12: "Offer/
+-- redemption configuration: default expiry-warning period", "App links",
+-- "Support details"). Singleton row (id is always 1) — this is one
+-- settings form, not a list. Offer types and redemption methods
+-- (Code/Barcode only) are NOT here — they're a fixed list from the product
+-- spec, not something the founder edits, so they live as constants in
+-- src/lib/offer-config.ts instead.
+create table if not exists public.system_settings (
+  id integer primary key default 1 check (id = 1),
+  default_expiry_warning_days integer not null default 7,
+  help_faq_url text,
+  privacy_policy_url text,
+  terms_url text,
+  subscription_terms_url text,
+  member_rules_url text,
+  app_store_url text,
+  google_play_url text,
+  support_email text,
+  business_contact_email text,
+  privacy_contact_email text,
+  updated_at timestamptz not null default now()
+);
+
+insert into public.system_settings (id) values (1) on conflict (id) do nothing;
+
+alter table public.system_settings enable row level security;
+-- Intentionally no policies — service_role-only. Unlike categories, these
+-- are operational/legal contact points the app can be built to reference
+-- via its own server-side code rather than needing direct public read
+-- access from client apps.
+
+-- Business Management + Locations (Admin_Portal_Structure.docx Sections 3
+-- & 4; Privi_updated.docx Phase 4.1 "Business Onboarding"). Founder-
+-- onboarded only — businesses never self-register.
+--
+-- National businesses use a single business record — identity/contact
+-- fields live here ONCE; per-location detail (address, phone,
+-- participation status) lives in business_locations below, added via
+-- "Add Location" rather than duplicating the business record.
+--
+-- status reuses the common draft/active/inactive/archived vocabulary from
+-- src/lib/status.ts (StatusBadge/STATUS_TONE need no changes). Publicly
+-- readable (anon key) for active rows only, same reasoning as
+-- public.categories: the future App/Website need to query live businesses
+-- directly. Admin mutations still always go through the service_role
+-- client regardless of this policy.
+create table if not exists public.businesses (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  short_description text,
+  logo_url text,
+  contact_name text not null,
+  contact_email text not null,
+  contact_phone text,
+  is_accessible boolean not null default false,
+  -- Founder-only notes, never surfaced to the App — the "internal admin
+  -- fields" item from Admin_Portal_Structure.docx Section 3.
+  internal_notes text,
+  status text not null default 'draft'
+    check (status in ('draft', 'active', 'inactive', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.businesses enable row level security;
+
+create policy "Anyone can view active businesses"
+  on public.businesses for select
+  using (status = 'active');
+
+create index if not exists businesses_status_idx on public.businesses (status);
+
+-- Many-to-many business <-> category assignment (category_icons/README.md:
+-- "a business can be assigned more than one category" — not a single fk
+-- column on businesses).
+create table if not exists public.business_categories (
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  category_id uuid not null references public.categories(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  primary key (business_id, category_id)
+);
+
+alter table public.business_categories enable row level security;
+
+create policy "Anyone can view categories for active businesses"
+  on public.business_categories for select
+  using (
+    exists (
+      select 1 from public.businesses b
+      where b.id = business_categories.business_id
+        and b.status = 'active'
+    )
+  );
+
+create index if not exists business_categories_category_id_idx
+  on public.business_categories (category_id);
+
+-- Per-location detail for a business (Admin_Portal_Structure.docx Section
+-- 4). A national business adds many rows here under one businesses row
+-- instead of duplicating identity fields. location_type is a fixed list
+-- from the product spec (same pattern as src/lib/offer-config.ts's
+-- OFFER_TYPES/REDEMPTION_METHODS — constants in src/lib/locations/config.ts,
+-- not admin-editable).
+--
+-- Coordinates are nullable — online_only/national locations may have no
+-- single pin. geocode_status records how lat/lng were obtained, surfaced
+-- in the admin UI as an invalid-coordinate warning — it never blocks save.
+create table if not exists public.business_locations (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  label text,
+  location_type text not null
+    check (location_type in (
+      'physical', 'online_only', 'national', 'regional', 'mobile', 'service_area'
+    )),
+  address_line1 text,
+  address_line2 text,
+  city text,
+  region text,
+  postcode text,
+  country text,
+  formatted_address text,
+  latitude double precision,
+  longitude double precision,
+  geocode_status text not null default 'pending'
+    check (geocode_status in ('pending', 'ok', 'failed', 'manual')),
+  phone text,
+  status text not null default 'draft'
+    check (status in ('draft', 'active', 'inactive', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.business_locations enable row level security;
+
+create policy "Anyone can view active locations of active businesses"
+  on public.business_locations for select
+  using (
+    status = 'active'
+    and exists (
+      select 1 from public.businesses b
+      where b.id = business_locations.business_id
+        and b.status = 'active'
+    )
+  );
+
+create index if not exists business_locations_business_id_idx
+  on public.business_locations (business_id);
+create index if not exists business_locations_status_idx
+  on public.business_locations (status);
+
+-- Storage bucket for business logos, uploaded via the admin portal (not a
+-- URL field — businesses hand over an image file, not a hosted link).
+-- Public read (the App/Website need to display logos directly); all writes
+-- go through the service_role client from Server Actions, which bypasses
+-- Storage RLS entirely, so no insert/update policy is needed here.
+insert into storage.buckets (id, name, public)
+values ('business-logos', 'business-logos', true)
+on conflict (id) do nothing;
+
+create policy "Public read access to business logos"
+  on storage.objects for select
+  using (bucket_id = 'business-logos');
+
+-- Offer Management (Admin_Portal_Structure.docx Section 5; Privi_updated.docx
+-- Phase 4.3/3.5). "Scheduled" and "expired" are never stored — they're
+-- computed at read time in src/lib/offers/queries.ts from status +
+-- start_date/expiry_date, so no background job is needed to flip anything.
+-- value_summary/terms/availability are deliberately free text rather than
+-- structured per-offer-type fields — see the task #6 plan for reasoning.
+create table if not exists public.offers (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  title text not null,
+  description text,
+  value_summary text,
+  offer_type text not null
+    check (offer_type in (
+      'percentage_discount', 'fixed_amount_discount', 'fixed_member_price',
+      'bundle', 'bogo', 'free_item', 'upgrade'
+    )),
+  terms text,
+  availability text,
+  redemption_method text not null
+    check (redemption_method in ('discount_code', 'barcode')),
+  redemption_value text,
+  location_scope text not null default 'all'
+    check (location_scope in ('all', 'selected', 'online', 'national', 'regional')),
+  start_date date,
+  expiry_date date,
+  status text not null default 'draft'
+    check (status in ('draft', 'active', 'inactive', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.offers enable row level security;
+
+-- Publicly readable once actually live AND not past its own expiry date —
+-- computed-expired offers should stop appearing to the App/Website even
+-- though the admin portal still shows them (as history) until archived.
+create policy "Anyone can view active, unexpired offers of active businesses"
+  on public.offers for select
+  using (
+    status = 'active'
+    and (expiry_date is null or expiry_date >= current_date)
+    and (start_date is null or start_date <= current_date)
+    and exists (
+      select 1 from public.businesses b
+      where b.id = offers.business_id and b.status = 'active'
+    )
+  );
+
+create index if not exists offers_business_id_idx on public.offers (business_id);
+create index if not exists offers_status_idx on public.offers (status);
+
+-- Used only when location_scope = 'selected'. For all/online/national/
+-- regional, eligible locations are computed from the business's own
+-- locations by location_type at read time — nothing to denormalise here.
+create table if not exists public.offer_locations (
+  offer_id uuid not null references public.offers(id) on delete cascade,
+  location_id uuid not null references public.business_locations(id) on delete cascade,
+  primary key (offer_id, location_id)
+);
+
+alter table public.offer_locations enable row level security;
+
+create policy "Anyone can view offer_locations for visible offers"
+  on public.offer_locations for select
+  using (
+    exists (
+      select 1 from public.offers o
+      where o.id = offer_locations.offer_id and o.status = 'active'
+    )
+  );
+
+-- Member Management (Admin_Portal_Structure.docx Section 6) — additive
+-- columns only on the EXISTING, website-owned public.profiles table (see
+-- PRIVI_Backend_Schema_Reference.md). Never touches first_name/last_name/
+-- preferred_area/stripe_customer_id/subscription_status/subscription_plan
+-- or the handle_new_user() trigger.
+--
+-- is_suspended is a denormalized display cache of Supabase Auth's real
+-- ban state (auth.admin.updateUserById ban_duration) — actual sign-in
+-- enforcement is the real ban, this column just avoids an admin-API round
+-- trip per row on the member list.
+alter table public.profiles
+  add column if not exists is_complimentary boolean not null default false,
+  add column if not exists complimentary_reason text,
+  add column if not exists complimentary_expires_at timestamptz,
+  add column if not exists admin_notes text,
+  add column if not exists is_suspended boolean not null default false;
+
+-- Notifications (Admin_Portal_Structure.docx Section 8b — in-app only;
+-- Section 8a transactional emails are fully automatic and never touch the
+-- admin portal). "Send" here computes and snapshots the target audience —
+-- there's no App yet to actually deliver anything to; this table is the
+-- shared contract the App will read from once it exists. "Schedule" is
+-- informational only (no cron/background job exists to auto-trigger it,
+-- same constraint already solved for offers in task #6).
+--
+-- Service-role-only, unlike categories/businesses/offers — matching a
+-- notification to the right subset of members (audience type, radius,
+-- individual target) is real server-side logic, not a simple "is this row
+-- active" boolean the anon key could safely filter on.
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null,
+  notification_type text not null default 'general'
+    check (notification_type in ('new_business', 'new_offer', 'offer_ending_soon', 'general')),
+  linked_business_id uuid references public.businesses(id) on delete set null,
+  linked_offer_id uuid references public.offers(id) on delete set null,
+  audience_type text not null
+    check (audience_type in ('all', 'monthly', 'annual', 'complimentary', 'area', 'individual')),
+  audience_member_id uuid references auth.users(id) on delete set null,
+  audience_radius_miles integer default 20,
+  audience_reference_business_id uuid references public.businesses(id) on delete set null,
+  scheduled_at timestamptz,
+  status text not null default 'draft'
+    check (status in ('draft', 'scheduled', 'sent', 'cancelled', 'failed')),
+  sent_at timestamptz,
+  targeted_count integer,
+  sent_count integer,
+  failed_count integer,
+  created_by uuid references public.admin_users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.notifications enable row level security;
+-- Intentionally no policies — service_role-only access.
+
+create index if not exists notifications_status_idx on public.notifications (status);
+
+-- PRIVI_Backend_Schema_Reference.md's "time-constraint/expiry field" — for
+-- GPS-only members (no stored preferred_area), the future App checks active
+-- campaigns live at next app-open and is expected to skip delivering
+-- anything past this timestamp rather than showing stale/expired deals.
+-- Members with a stored preferred_area get an immediate server-side radius
+-- check instead (already unaffected by this field). Nullable/optional —
+-- not every notification is time-sensitive (e.g. a new-business
+-- announcement has no natural expiry).
+alter table public.notifications add column if not exists expires_at timestamptz;
+
+-- Task #10 (Dashboard). Deletion requests aren't a self-service in-app
+-- flow (Section 9 removed ticket-raising entirely) — they arrive as an
+-- email to the privacy contact address, outside any table. This is a
+-- manual flag the admin sets on the member record on receiving one, so it
+-- surfaces on the Dashboard's Action Centre as a to-do until actioned
+-- (delete/anonymise, both already built in task #7).
+alter table public.profiles add column if not exists deletion_requested_at timestamptz;
