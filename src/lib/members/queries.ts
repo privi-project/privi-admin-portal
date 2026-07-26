@@ -23,6 +23,7 @@ export type Member = {
 export type MemberListFilters = {
   q?: string;
   status?: string;
+  plan?: string;
   complimentary?: boolean;
   suspended?: boolean;
 };
@@ -89,6 +90,9 @@ export async function listMembers(filters: MemberListFilters = {}): Promise<Memb
   }
   if (filters.status) {
     members = members.filter((m) => m.subscription_status === filters.status);
+  }
+  if (filters.plan) {
+    members = members.filter((m) => m.subscription_plan === filters.plan);
   }
   if (filters.complimentary) {
     members = members.filter((m) => m.is_complimentary);

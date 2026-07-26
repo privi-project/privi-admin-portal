@@ -3,13 +3,26 @@ import { getDashboardSummary } from "@/lib/dashboard/queries";
 
 const PERIOD_OPTIONS = [7, 30, 90];
 
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-border-hairline bg-white p-4">
+function StatTile({ label, value, href }: { label: string; value: string; href?: string }) {
+  const content = (
+    <>
       <p className="text-xs text-muted-dark">{label}</p>
       <p className="mt-1 text-lg font-medium">{value}</p>
-    </div>
+    </>
   );
+
+  if (href) {
+    return (
+      <NavLink
+        href={href}
+        className="block rounded-2xl border border-border-hairline bg-white p-4 hover:border-gold"
+      >
+        {content}
+      </NavLink>
+    );
+  }
+
+  return <div className="rounded-2xl border border-border-hairline bg-white p-4">{content}</div>;
 }
 
 function ActionList({
@@ -90,19 +103,48 @@ export default async function DashboardPage({
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatTile label="Active members" value={String(summary.members.active)} />
-          <StatTile label="Monthly" value={String(summary.members.monthly)} />
-          <StatTile label="Annual" value={String(summary.members.annual)} />
-          <StatTile label="Complimentary" value={String(summary.members.complimentary)} />
-          <StatTile label="Cancelled" value={String(summary.members.cancelled)} />
+          <StatTile
+            label="Active members"
+            value={String(summary.members.active)}
+            href="/members?status=active"
+          />
+          <StatTile
+            label="Monthly"
+            value={String(summary.members.monthly)}
+            href="/members?status=active&plan=monthly"
+          />
+          <StatTile
+            label="Annual"
+            value={String(summary.members.annual)}
+            href="/members?status=active&plan=annual"
+          />
+          <StatTile
+            label="Complimentary"
+            value={String(summary.members.complimentary)}
+            href="/members?complimentary=on"
+          />
+          <StatTile
+            label="Cancelled"
+            value={String(summary.members.cancelled)}
+            href="/members?status=canceled"
+          />
           <StatTile
             label={`New members (${periodDays}d)`}
             value={String(summary.members.newInPeriod)}
+            href="/members"
           />
-          <StatTile label="MRR" value={`£${summary.mrr.toFixed(2)}`} />
-          <StatTile label="ARR" value={`£${summary.arr.toFixed(2)}`} />
-          <StatTile label="Active businesses" value={String(summary.businesses.active)} />
-          <StatTile label="Inactive businesses" value={String(summary.businesses.inactive)} />
+          <StatTile label="MRR" value={`£${summary.mrr.toFixed(2)}`} href="/subscriptions" />
+          <StatTile label="ARR" value={`£${summary.arr.toFixed(2)}`} href="/subscriptions" />
+          <StatTile
+            label="Active businesses"
+            value={String(summary.businesses.active)}
+            href="/businesses?status=active"
+          />
+          <StatTile
+            label="Inactive businesses"
+            value={String(summary.businesses.inactive)}
+            href="/businesses?status=inactive"
+          />
           <StatTile label="Active offers" value={String(summary.offers.active)} />
           <StatTile label="Scheduled offers" value={String(summary.offers.scheduled)} />
           <StatTile label="Expired offers" value={String(summary.offers.expired)} />
@@ -111,7 +153,11 @@ export default async function DashboardPage({
           &quot;Cancelled&quot; and MRR/ARR are current snapshots, not
           period-windowed — no historical subscription-event log exists to
           compute a period-based cancellation count (same limitation noted
-          on the Subscriptions page).
+          on the Subscriptions page). Offer tiles aren&apos;t clickable —
+          there&apos;s no single cross-business offers list to link to yet
+          (offers currently only live nested under each business); the
+          Action Centre below covers the drill-down cases that matter most
+          (expiring/expired/starting soon).
         </p>
       </section>
 

@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const members = await listMembers({
     q: searchParams.get("q") ?? undefined,
     status: searchParams.get("status") ?? undefined,
+    plan: searchParams.get("plan") ?? undefined,
     complimentary: searchParams.get("complimentary") === "on",
     suspended: searchParams.get("suspended") === "on",
   });

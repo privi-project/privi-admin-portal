@@ -6,12 +6,19 @@ import { StatusBadge } from "@/components/status-badge";
 export default async function MembersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; complimentary?: string; suspended?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    plan?: string;
+    complimentary?: string;
+    suspended?: string;
+  }>;
 }) {
   const params = await searchParams;
   const members = await listMembers({
     q: params.q,
     status: params.status,
+    plan: params.plan,
     complimentary: params.complimentary === "on",
     suspended: params.suspended === "on",
   });
@@ -68,6 +75,19 @@ export default async function MembersPage({
                 {s.label}
               </option>
             ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Plan
+          <select
+            name="plan"
+            defaultValue={params.plan ?? ""}
+            className="rounded-lg border border-border-hairline px-3 py-2"
+          >
+            <option value="">All plans</option>
+            <option value="monthly">Monthly</option>
+            <option value="annual">Annual</option>
           </select>
         </label>
 

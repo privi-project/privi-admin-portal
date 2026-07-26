@@ -22,16 +22,28 @@ export default async function BusinessesPage({
     listCategories(),
   ]);
 
+  const exportQuery = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v) as [string, string][],
+  ).toString();
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-medium">Businesses</h1>
-        <NavLink
-          href="/businesses/new"
-          className="rounded-lg privi-gold-border border bg-teal px-4 py-2 text-sm font-medium text-ivory [--gold-border-bg:var(--color-teal)]"
-        >
-          Add business
-        </NavLink>
+        <div className="flex items-center gap-3">
+          <a
+            href={`/businesses/export.csv${exportQuery ? `?${exportQuery}` : ""}`}
+            className="rounded-lg border border-border-hairline px-4 py-2 text-sm font-medium"
+          >
+            Export CSV
+          </a>
+          <NavLink
+            href="/businesses/new"
+            className="rounded-lg privi-gold-border border bg-teal px-4 py-2 text-sm font-medium text-ivory [--gold-border-bg:var(--color-teal)]"
+          >
+            Add business
+          </NavLink>
+        </div>
       </div>
 
       <form
