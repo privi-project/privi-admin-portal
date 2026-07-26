@@ -5,15 +5,16 @@ import { NavLink } from "@/components/nav-link";
 
 // Admin_Portal_Structure.docx's "Final v1 Navigation" list, in order.
 // Reports is dashboard-level only at v1 (no separate page, folded into
-// Dashboard's summary figures) so it's not a nav item. Activity Log and
-// Settings are added once task #11 builds those routes.
+// Dashboard's summary figures) so it's not a nav item.
 const NAV_ITEMS = [
   { href: "/home", label: "Dashboard" },
   { href: "/businesses", label: "Businesses" },
   { href: "/members", label: "Members" },
   { href: "/subscriptions", label: "Subscriptions" },
   { href: "/notifications", label: "Notifications" },
+  { href: "/activity-log", label: "Activity Log" },
   { href: "/app-data", label: "App Data" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function AdminNav() {

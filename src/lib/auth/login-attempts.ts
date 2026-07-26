@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { LOCKOUT_MINUTES, MAX_FAILED_LOGIN_ATTEMPTS } from "@/lib/auth/constants";
+import { getSystemSettings } from "@/lib/system-settings/queries";
 
 type AdminUserRow = {
   id: string;
@@ -51,10 +51,11 @@ export async function recordFailedAttempt(email: string): Promise<void> {
 
   if (!data) return;
 
+  const { max_failed_login_attempts, lockout_minutes } = await getSystemSettings();
   const nextCount = data.failed_login_count + 1;
   const lockedUntil =
-    nextCount >= MAX_FAILED_LOGIN_ATTEMPTS
-      ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString()
+    nextCount >= max_failed_login_attempts
+      ? new Date(Date.now() + lockout_minutes * 60 * 1000).toISOString()
       : null;
 
   await adminClient

@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { ADMIN_ACTIVITY_COOKIE, ADMIN_IDLE_TIMEOUT_MINUTES } from "@/lib/auth/constants";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  ADMIN_ACTIVITY_COOKIE,
+  ADMIN_IDLE_TIMEOUT_MINUTES,
+  ADMIN_TIMEOUT_MINUTES_COOKIE,
+} from "@/lib/auth/constants";
 
 // Reachable with no session at all.
 const FULLY_PUBLIC_PATHS = [
@@ -52,7 +57,31 @@ export async function proxy(request: NextRequest) {
   // plain httpOnly cookie tracks last activity on protected routes only.
   const lastActivity = request.cookies.get(ADMIN_ACTIVITY_COOKIE)?.value;
   const now = Date.now();
-  const timeoutMs = ADMIN_IDLE_TIMEOUT_MINUTES * 60 * 1000;
+
+  // The configured minutes travel in their own cookie, fetched from
+  // system_settings ONCE per session (only when there's no activity cookie
+  // yet, i.e. the first protected request after MFA elevation) rather than
+  // on every request — keeps this "cheap and optimistic" in aggregate while
+  // still letting Settings (task #11) actually control it. A change to the
+  // setting takes effect on the admin's next fresh session, not instantly
+  // mid-session — deliberate, documented tradeoff rather than adding a DB
+  // call to every single request.
+  let timeoutMinutes = Number(request.cookies.get(ADMIN_TIMEOUT_MINUTES_COOKIE)?.value);
+  if (!Number.isFinite(timeoutMinutes) || timeoutMinutes <= 0) {
+    timeoutMinutes = ADMIN_IDLE_TIMEOUT_MINUTES;
+    if (!lastActivity) {
+      const adminClient = createAdminClient();
+      if (adminClient) {
+        const { data } = await adminClient
+          .from("system_settings")
+          .select("session_timeout_minutes")
+          .eq("id", 1)
+          .maybeSingle();
+        if (data?.session_timeout_minutes) timeoutMinutes = data.session_timeout_minutes;
+      }
+    }
+  }
+  const timeoutMs = timeoutMinutes * 60 * 1000;
 
   if (lastActivity && now - Number(lastActivity) > timeoutMs) {
     await supabase.auth.signOut();
@@ -60,15 +89,18 @@ export async function proxy(request: NextRequest) {
       new URL("/login?reason=timeout", request.url),
     );
     redirectResponse.cookies.delete(ADMIN_ACTIVITY_COOKIE);
+    redirectResponse.cookies.delete(ADMIN_TIMEOUT_MINUTES_COOKIE);
     return redirectResponse;
   }
 
-  response.cookies.set(ADMIN_ACTIVITY_COOKIE, String(now), {
+  const cookieOptions = {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-  });
+  };
+  response.cookies.set(ADMIN_ACTIVITY_COOKIE, String(now), cookieOptions);
+  response.cookies.set(ADMIN_TIMEOUT_MINUTES_COOKIE, String(timeoutMinutes), cookieOptions);
 
   return response;
 }

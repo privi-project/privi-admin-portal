@@ -12,6 +12,9 @@ export type SystemSettings = {
   support_email: string | null;
   business_contact_email: string | null;
   privacy_contact_email: string | null;
+  session_timeout_minutes: number;
+  max_failed_login_attempts: number;
+  lockout_minutes: number;
 };
 
 const DEFAULTS: SystemSettings = {
@@ -26,6 +29,9 @@ const DEFAULTS: SystemSettings = {
   support_email: null,
   business_contact_email: null,
   privacy_contact_email: null,
+  session_timeout_minutes: 30,
+  max_failed_login_attempts: 5,
+  lockout_minutes: 15,
 };
 
 export async function getSystemSettings(): Promise<SystemSettings> {
@@ -35,7 +41,7 @@ export async function getSystemSettings(): Promise<SystemSettings> {
   const { data } = await adminClient
     .from("system_settings")
     .select(
-      "default_expiry_warning_days, help_faq_url, privacy_policy_url, terms_url, subscription_terms_url, member_rules_url, app_store_url, google_play_url, support_email, business_contact_email, privacy_contact_email",
+      "default_expiry_warning_days, help_faq_url, privacy_policy_url, terms_url, subscription_terms_url, member_rules_url, app_store_url, google_play_url, support_email, business_contact_email, privacy_contact_email, session_timeout_minutes, max_failed_login_attempts, lockout_minutes",
     )
     .eq("id", 1)
     .maybeSingle();

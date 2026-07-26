@@ -36,7 +36,7 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
       listAllOffers(),
       getSubscriptionOverview(),
       getSystemSettings(),
-      listActivity(10),
+      listActivity({ limit: 10 }),
     ]);
 
   const periodStart = new Date();

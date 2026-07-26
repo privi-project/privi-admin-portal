@@ -398,3 +398,13 @@ alter table public.notifications add column if not exists expires_at timestamptz
 -- surfaces on the Dashboard's Action Centre as a to-do until actioned
 -- (delete/anonymise, both already built in task #7).
 alter table public.profiles add column if not exists deletion_requested_at timestamptz;
+
+-- Task #11 (Settings) — makes the previously-hardcoded security constants
+-- (src/lib/auth/constants.ts) admin-editable, per Section 13's "session
+-- timeout, security settings". Time zone/date format were deliberately
+-- NOT added — nothing in the app currently renders dates per-timezone or
+-- per-format (everything uses browser-local formatting), so stored-but-
+-- inert settings fields would be worse than not having them.
+alter table public.system_settings add column if not exists session_timeout_minutes integer not null default 30;
+alter table public.system_settings add column if not exists max_failed_login_attempts integer not null default 5;
+alter table public.system_settings add column if not exists lockout_minutes integer not null default 15;
