@@ -9,9 +9,14 @@ export default async function AppDataPage() {
     <div className="p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-medium">App Data</h1>
-        <NavLink href="/categories" className="text-sm text-gold">
-          Manage categories →
-        </NavLink>
+        <div className="flex items-center gap-4">
+          <NavLink href="/categories" className="text-sm text-gold">
+            Manage categories →
+          </NavLink>
+          <NavLink href="/app-data/season-banners" className="text-sm text-gold">
+            Manage season banners →
+          </NavLink>
+        </div>
       </div>
       <SettingsForm settings={settings} />
     </div>

@@ -13,7 +13,8 @@ export type ActivityEntityType =
   | "member"
   | "notification"
   | "category"
-  | "settings";
+  | "settings"
+  | "banner";
 
 export type LogActivityInput = {
   adminId: string;

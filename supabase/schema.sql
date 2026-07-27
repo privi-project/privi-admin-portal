@@ -408,3 +408,74 @@ alter table public.profiles add column if not exists deletion_requested_at times
 alter table public.system_settings add column if not exists session_timeout_minutes integer not null default 30;
 alter table public.system_settings add column if not exists max_failed_login_attempts integer not null default 5;
 alter table public.system_settings add column if not exists lockout_minutes integer not null default 15;
+
+-- Admin_Portal_Structure.docx Section 12: member-facing search is scoped to
+-- match "business name, category, and the description/search-keyword tags
+-- assigned per business" — this column is that missing keyword-tags field
+-- (task #4/#5 built categories and short_description but never actually
+-- added this). Free-text, comma-separated, admin-authored — e.g. a golf
+-- venue might carry "golf, driving range, mini golf, family fun" so a
+-- member searching "golf" finds it even though "golf" isn't in the
+-- business name. The future App's search should match against this column
+-- (ILIKE/full-text) alongside name and category — no fuzzy matching per
+-- spec, just literal substring matching across a wider field.
+alter table public.businesses add column if not exists search_keywords text;
+
+-- New feature, founder-requested (2026-07-27): season/announcement banner,
+-- shown at the top of the App's home feed. Public-read (App members read
+-- this with the anon key, same "Anyone can view active X" pattern as
+-- categories/businesses/offers) — unlike notifications this has no
+-- per-member targeting logic, it's the same content for everyone.
+create table if not exists public.season_banners (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  message text not null,
+  is_active boolean not null default false,
+  action_type text not null default 'none'
+    check (action_type in ('none', 'categories', 'external_link')),
+  -- Only used when action_type = 'external_link' — opened in the App's
+  -- in-app browser (same mechanism as the Help Centre link), not limited
+  -- to legal pages even though that's the common case.
+  action_url text,
+  created_by uuid references public.admin_users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.season_banners enable row level security;
+
+create policy "Anyone can view active season banners"
+  on public.season_banners for select
+  using (is_active = true);
+
+-- Only used when action_type = 'categories' — which category/categories
+-- tapping the banner should filter to. Same join-table shape as
+-- business_categories.
+create table if not exists public.season_banner_categories (
+  banner_id uuid not null references public.season_banners(id) on delete cascade,
+  category_id uuid not null references public.categories(id) on delete cascade,
+  primary key (banner_id, category_id)
+);
+
+alter table public.season_banner_categories enable row level security;
+
+create policy "Anyone can view season_banner_categories for visible banners"
+  on public.season_banner_categories for select
+  using (
+    exists (
+      select 1 from public.season_banners b
+      where b.id = season_banner_categories.banner_id and b.is_active = true
+    )
+  );
+
+-- New feature, founder-requested (2026-07-27): pin a business to the top
+-- of the App's business list. Two tiers: 'category' pins it only within
+-- lists filtered to a category it belongs to; 'global' pins it everywhere
+-- regardless of category filter. featured_at is set only when
+-- featured_level actually changes (see updateBusinessAction) — not on
+-- every edit — so multiple featured businesses have a stable "most
+-- recently featured first" order without needing a separate manual
+-- ordering field.
+alter table public.businesses add column if not exists featured_level text not null default 'none'
+  check (featured_level in ('none', 'category', 'global'));
+alter table public.businesses add column if not exists featured_at timestamptz;

@@ -11,6 +11,7 @@ const ENTITY_TYPES = [
   "notification",
   "category",
   "settings",
+  "banner",
 ];
 
 export default async function ActivityLogPage({

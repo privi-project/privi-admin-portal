@@ -4,6 +4,7 @@ export type Business = {
   id: string;
   name: string;
   short_description: string | null;
+  search_keywords: string | null;
   logo_url: string | null;
   contact_name: string;
   contact_email: string;
@@ -11,6 +12,8 @@ export type Business = {
   is_accessible: boolean;
   internal_notes: string | null;
   status: string;
+  featured_level: "none" | "category" | "global";
+  featured_at: string | null;
   created_at: string;
   updated_at: string;
 };

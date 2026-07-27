@@ -146,6 +146,12 @@ export default async function BusinessesPage({
               </div>
             </div>
 
+            {business.featured_level !== "none" && (
+              <span className="privi-gold-text inline-flex items-center rounded-full border border-gold px-2.5 py-0.5 text-xs font-medium">
+                Featured{business.featured_level === "global" ? " (everywhere)" : ""}
+              </span>
+            )}
+
             <StatusBadge status={business.status} />
 
             <NavLink href={`/businesses/${business.id}/edit`} className="text-sm text-gold">

@@ -9,7 +9,11 @@ export default async function CategoriesPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between">
+      <NavLink href="/app-data" className="text-sm text-gold">
+        ← Back to App Data
+      </NavLink>
+
+      <div className="mt-2 flex items-center justify-between">
         <h1 className="text-lg font-medium">Categories</h1>
         <NavLink
           href="/categories/new"

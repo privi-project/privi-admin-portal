@@ -11,10 +11,13 @@ import { createAutoDraftNotification } from "@/lib/notifications/auto-draft";
 
 export type BusinessFormState = { error?: string } | undefined;
 
+const FEATURED_LEVELS = ["none", "category", "global"];
+
 function readBusinessFields(formData: FormData) {
   return {
     name: String(formData.get("name") ?? "").trim(),
     short_description: String(formData.get("short_description") ?? "").trim() || null,
+    search_keywords: String(formData.get("search_keywords") ?? "").trim() || null,
     // Business-level contact — the founder's own point of contact at the
     // business, never shown to members. Per-location phone (shown to
     // members) lives on business_locations instead.
@@ -23,6 +26,7 @@ function readBusinessFields(formData: FormData) {
     contact_phone: String(formData.get("contact_phone") ?? "").trim() || null,
     is_accessible: formData.get("is_accessible") === "on",
     internal_notes: String(formData.get("internal_notes") ?? "").trim() || null,
+    featured_level: String(formData.get("featured_level") ?? "none"),
   };
 }
 
@@ -56,6 +60,7 @@ function validateBusinessFields(
     return "A valid contact email is required.";
   }
   if (categoryIds.length === 0) return "Select at least one category.";
+  if (!FEATURED_LEVELS.includes(fields.featured_level)) return "Invalid featured level.";
   return null;
 }
 
@@ -90,7 +95,11 @@ export async function createBusinessAction(
 
   const { data, error } = await adminClient
     .from("businesses")
-    .insert({ ...fields, logo_url: logoResult.url })
+    .insert({
+      ...fields,
+      logo_url: logoResult.url,
+      featured_at: fields.featured_level !== "none" ? new Date().toISOString() : null,
+    })
     .select("id")
     .single();
 
@@ -131,9 +140,30 @@ export async function updateBusinessAction(
   const adminClient = createAdminClient();
   if (!adminClient) throw new Error("Admin Supabase client is not configured.");
 
+  // featured_at only moves when featured_level actually changes — not on
+  // every unrelated edit — so "most recently featured first" stays a
+  // meaningful order rather than just tracking whoever was last saved.
+  const { data: current } = await adminClient
+    .from("businesses")
+    .select("featured_level, featured_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  const featuredAt =
+    current && current.featured_level !== fields.featured_level
+      ? fields.featured_level !== "none"
+        ? new Date().toISOString()
+        : null
+      : (current?.featured_at ?? null);
+
   const { error } = await adminClient
     .from("businesses")
-    .update({ ...fields, logo_url: logoResult.url, updated_at: new Date().toISOString() })
+    .update({
+      ...fields,
+      logo_url: logoResult.url,
+      featured_at: featuredAt,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id);
 
   if (error) return { error: error.message };
