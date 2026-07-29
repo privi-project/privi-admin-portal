@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { OpeningHours } from "@/lib/locations/opening-hours";
 
 export type Location = {
   id: string;
@@ -16,6 +17,7 @@ export type Location = {
   longitude: number | null;
   geocode_status: string;
   phone: string | null;
+  opening_hours: OpeningHours | null;
   status: string;
   created_at: string;
   updated_at: string;

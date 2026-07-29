@@ -86,6 +86,39 @@ export function EditBusinessForm({
           defaultValue={business.short_description ?? ""}
           className="rounded-lg border border-border-hairline px-3 py-2"
         />
+        <span className="text-xs text-muted-dark">
+          One line shown right under the business name on the Business Page,
+          e.g. &quot;Italian coffee house&quot;.
+        </span>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        About
+        <textarea
+          name="about_description"
+          rows={4}
+          defaultValue={business.about_description ?? ""}
+          className="rounded-lg border border-border-hairline px-3 py-2"
+        />
+        <span className="text-xs text-muted-dark">
+          The longer paragraph shown under the Business Page&apos;s ABOUT
+          heading.
+        </span>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        Website
+        <input
+          type="url"
+          name="website_url"
+          placeholder="https://…"
+          defaultValue={business.website_url ?? ""}
+          className="rounded-lg border border-border-hairline px-3 py-2"
+        />
+        <span className="text-xs text-muted-dark">
+          Opens in the App&apos;s in-app browser when tapped. Leave blank to
+          hide the Website row entirely.
+        </span>
       </label>
 
       <label className="flex flex-col gap-1 text-sm">

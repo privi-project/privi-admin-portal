@@ -11,6 +11,18 @@ import { LOCATION_TYPES } from "@/lib/locations/config";
 
 export type LocationFormState = { error?: string } | undefined;
 
+function readOpeningHours(formData: FormData) {
+  const raw = String(formData.get("opening_hours") ?? "").trim();
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // Malformed JSON shouldn't happen from the form's own serializer, but
+    // fall back to "no hours set" rather than fail the whole save.
+    return null;
+  }
+}
+
 function readLocationFields(formData: FormData) {
   return {
     label: String(formData.get("label") ?? "").trim() || null,
@@ -22,6 +34,7 @@ function readLocationFields(formData: FormData) {
     postcode: String(formData.get("postcode") ?? "").trim() || null,
     country: String(formData.get("country") ?? "").trim() || null,
     phone: String(formData.get("phone") ?? "").trim() || null,
+    opening_hours: readOpeningHours(formData),
     formatted_address: String(formData.get("formatted_address") ?? "").trim() || null,
     latitude: formData.get("latitude") ? Number(formData.get("latitude")) : null,
     longitude: formData.get("longitude") ? Number(formData.get("longitude")) : null,
@@ -116,7 +129,7 @@ export async function duplicateLocationAction(businessId: string, locationId: st
   const { data: original } = await adminClient
     .from("business_locations")
     .select(
-      "label, location_type, address_line1, address_line2, city, region, postcode, country, formatted_address, latitude, longitude, geocode_status, phone",
+      "label, location_type, address_line1, address_line2, city, region, postcode, country, formatted_address, latitude, longitude, geocode_status, phone, opening_hours",
     )
     .eq("id", locationId)
     .maybeSingle();

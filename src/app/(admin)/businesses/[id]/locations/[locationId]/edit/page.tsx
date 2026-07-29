@@ -51,6 +51,7 @@ export default async function EditLocationPage({
           latitude: location.latitude,
           longitude: location.longitude,
           geocode_status: location.geocode_status,
+          opening_hours: location.opening_hours,
         }}
       />
     </div>

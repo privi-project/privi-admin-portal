@@ -6,6 +6,13 @@ import { LocationMapPicker } from "@/components/location-map-picker";
 import { useUnsavedChangesGuard } from "@/lib/navigation-blocker";
 import { isWithinUkBounds } from "@/lib/google-maps/bounds";
 import type { GeocodeResult } from "@/lib/google-maps/geocode";
+import {
+  DAY_KEYS,
+  DAY_LABELS,
+  emptyOpeningHours,
+  type DayKey,
+  type OpeningHours,
+} from "@/lib/locations/opening-hours";
 
 type LocationFormState = { error?: string } | undefined;
 
@@ -33,6 +40,7 @@ type LocationFormProps = {
     latitude?: number | null;
     longitude?: number | null;
     geocode_status?: string;
+    opening_hours?: OpeningHours | null;
   };
 };
 
@@ -66,6 +74,15 @@ export function LocationForm({
   const [geocodeStatus, setGeocodeStatus] = useState(initial?.geocode_status ?? "pending");
   const [geocodeMessage, setGeocodeMessage] = useState<string | null>(null);
   const [isGeocoding, startGeocode] = useTransition();
+  const [hasOpeningHours, setHasOpeningHours] = useState(!!initial?.opening_hours);
+  const [openingHours, setOpeningHours] = useState<OpeningHours>(
+    initial?.opening_hours ?? emptyOpeningHours(),
+  );
+
+  function updateDayHours(day: DayKey, patch: Partial<OpeningHours[DayKey]>) {
+    setOpeningHours((prev) => ({ ...prev, [day]: { ...prev[day], ...patch } }));
+    setIsDirty(true);
+  }
 
   const [state, action, isPending] = useActionState(formAction, undefined);
   const [isDirty, setIsDirty] = useState(false);
@@ -288,11 +305,70 @@ export function LocationForm({
         />
       </label>
 
+      <div className="flex flex-col gap-2 border-t border-border-hairline pt-4 text-sm">
+        <label className="flex items-center gap-2 font-medium">
+          <input
+            type="checkbox"
+            checked={hasOpeningHours}
+            onChange={(e) => {
+              setHasOpeningHours(e.target.checked);
+              setIsDirty(true);
+            }}
+          />
+          Set opening hours
+        </label>
+        <p className="text-xs text-muted-dark">
+          Shown on the Business Page as &quot;Open today HH:MM – HH:MM&quot;
+          (or &quot;Closed today&quot;), computed from whichever day it is.
+          Leave unchecked to hide the Opening Times row entirely.
+        </p>
+
+        {hasOpeningHours && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border-hairline p-3">
+            {DAY_KEYS.map((day) => (
+              <div key={day} className="flex items-center gap-3">
+                <span className="w-24 shrink-0">{DAY_LABELS[day]}</span>
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!openingHours[day].closed}
+                    onChange={(e) => updateDayHours(day, { closed: !e.target.checked })}
+                  />
+                  Open
+                </label>
+                {!openingHours[day].closed && (
+                  <>
+                    <input
+                      type="time"
+                      value={openingHours[day].open}
+                      onChange={(e) => updateDayHours(day, { open: e.target.value })}
+                      className="rounded border border-border-hairline px-2 py-1 text-xs"
+                    />
+                    <span className="text-xs text-muted-dark">to</span>
+                    <input
+                      type="time"
+                      value={openingHours[day].close}
+                      onChange={(e) => updateDayHours(day, { close: e.target.value })}
+                      className="rounded border border-border-hairline px-2 py-1 text-xs"
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Hidden fields carrying derived/state values into the form submit */}
       <input type="hidden" name="formatted_address" value={formattedAddress} />
       <input type="hidden" name="latitude" value={latitude ?? ""} />
       <input type="hidden" name="longitude" value={longitude ?? ""} />
       <input type="hidden" name="geocode_status" value={geocodeStatus} />
+      <input
+        type="hidden"
+        name="opening_hours"
+        value={hasOpeningHours ? JSON.stringify(openingHours) : ""}
+      />
 
       <button
         type="submit"

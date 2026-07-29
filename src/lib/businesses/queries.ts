@@ -4,6 +4,8 @@ export type Business = {
   id: string;
   name: string;
   short_description: string | null;
+  about_description: string | null;
+  website_url: string | null;
   search_keywords: string | null;
   logo_url: string | null;
   contact_name: string;
