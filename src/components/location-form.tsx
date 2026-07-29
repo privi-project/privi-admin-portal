@@ -26,6 +26,7 @@ type LocationFormValues = {
   postcode: string;
   country: string;
   phone: string;
+  website_url: string;
 };
 
 type LocationFormProps = {
@@ -54,6 +55,7 @@ const EMPTY_VALUES: LocationFormValues = {
   postcode: "",
   country: "",
   phone: "",
+  website_url: "",
 };
 
 export function LocationForm({
@@ -303,6 +305,23 @@ export function LocationForm({
           onChange={(e) => updateField("phone", e.target.value)}
           className="rounded-lg border border-border-hairline px-3 py-2"
         />
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        Website
+        <input
+          type="url"
+          name="website_url"
+          placeholder="https://…"
+          value={values.website_url}
+          onChange={(e) => updateField("website_url", e.target.value)}
+          className="rounded-lg border border-border-hairline px-3 py-2"
+        />
+        <span className="text-xs text-muted-dark">
+          Opens in the App&apos;s in-app browser when tapped. Leave blank to
+          hide the Website row for this location. If this business only has
+          one location, this is the only place to set its website.
+        </span>
       </label>
 
       <div className="flex flex-col gap-2 border-t border-border-hairline pt-4 text-sm">

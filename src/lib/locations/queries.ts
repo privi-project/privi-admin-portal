@@ -17,6 +17,7 @@ export type Location = {
   longitude: number | null;
   geocode_status: string;
   phone: string | null;
+  website_url: string | null;
   opening_hours: OpeningHours | null;
   status: string;
   created_at: string;

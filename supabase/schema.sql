@@ -481,19 +481,25 @@ alter table public.businesses add column if not exists featured_level text not n
 alter table public.businesses add column if not exists featured_at timestamptz;
 
 -- App's Business Page (12 Busines Page Screen mockup, 2026-07-29) needs
--- an ABOUT paragraph and a website link that short_description doesn't
--- cover — short_description is the one-line descriptor shown right under
--- the business name ("Italian coffee house"), about_description is the
+-- an ABOUT paragraph that short_description doesn't cover —
+-- short_description is the one-line descriptor shown right under the
+-- business name ("Italian coffee house"), about_description is the
 -- longer paragraph shown further down under its own "ABOUT" heading.
 alter table public.businesses add column if not exists about_description text;
-alter table public.businesses add column if not exists website_url text;
 
--- Per-location opening hours — a national business can have different
--- hours per site, so this lives on business_locations, not businesses.
--- Structured per weekday (jsonb keyed 'mon'..'sun', each
--- {open:"HH:MM", close:"HH:MM", closed:boolean}) rather than free text,
--- so the App can compute "Open today 7:00am – 8:00pm" / "Closed today"
--- itself instead of the admin having to keep that phrasing in sync by
--- hand every day. Nullable — a location with no hours set just doesn't
--- show the Opening Times row on the Business Page.
+-- Per-location website and opening hours — a national business can have
+-- a different site (and different hours) per location, so both live on
+-- business_locations, not businesses. website_url briefly lived on
+-- businesses instead (2026-07-29) but moved here before any real
+-- business data used it, once it became clear every business adds at
+-- least one location anyway and multi-location businesses genuinely can
+-- have distinct per-site websites. opening_hours is structured per
+-- weekday (jsonb keyed 'mon'..'sun', each {open:"HH:MM", close:"HH:MM",
+-- closed:boolean}) rather than free text, so the App can compute "Open
+-- today 7:00am – 8:00pm" / "Closed today" itself instead of the admin
+-- having to keep that phrasing in sync by hand every day. Both nullable —
+-- a location missing either just doesn't show that row on the Business
+-- Page.
+alter table public.businesses drop column if exists website_url;
+alter table public.business_locations add column if not exists website_url text;
 alter table public.business_locations add column if not exists opening_hours jsonb;

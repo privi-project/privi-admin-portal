@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminSession } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
-import { isRequired, isValidEmail, isValidUrl } from "@/lib/validation";
+import { isRequired, isValidEmail } from "@/lib/validation";
 import { uploadBusinessLogo } from "@/lib/businesses/logo-upload";
 import { createAutoDraftNotification } from "@/lib/notifications/auto-draft";
 
@@ -18,7 +18,6 @@ function readBusinessFields(formData: FormData) {
     name: String(formData.get("name") ?? "").trim(),
     short_description: String(formData.get("short_description") ?? "").trim() || null,
     about_description: String(formData.get("about_description") ?? "").trim() || null,
-    website_url: String(formData.get("website_url") ?? "").trim() || null,
     search_keywords: String(formData.get("search_keywords") ?? "").trim() || null,
     // Business-level contact — the founder's own point of contact at the
     // business, never shown to members. Per-location phone (shown to
@@ -63,9 +62,6 @@ function validateBusinessFields(
   }
   if (categoryIds.length === 0) return "Select at least one category.";
   if (!FEATURED_LEVELS.includes(fields.featured_level)) return "Invalid featured level.";
-  if (fields.website_url && !isValidUrl(fields.website_url)) {
-    return "Website must be a valid http(s) URL.";
-  }
   return null;
 }
 

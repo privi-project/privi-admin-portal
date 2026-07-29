@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminSession } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
-import { isRequired } from "@/lib/validation";
+import { isRequired, isValidUrl } from "@/lib/validation";
 import { geocodeAddress, type GeocodeResult } from "@/lib/google-maps/geocode";
 import { LOCATION_TYPES } from "@/lib/locations/config";
 
@@ -34,6 +34,7 @@ function readLocationFields(formData: FormData) {
     postcode: String(formData.get("postcode") ?? "").trim() || null,
     country: String(formData.get("country") ?? "").trim() || null,
     phone: String(formData.get("phone") ?? "").trim() || null,
+    website_url: String(formData.get("website_url") ?? "").trim() || null,
     opening_hours: readOpeningHours(formData),
     formatted_address: String(formData.get("formatted_address") ?? "").trim() || null,
     latitude: formData.get("latitude") ? Number(formData.get("latitude")) : null,
@@ -46,6 +47,9 @@ function validateLocationFields(fields: ReturnType<typeof readLocationFields>): 
   if (!isRequired(fields.location_type)) return "Location type is required.";
   const validTypes = LOCATION_TYPES.map((t) => t.value) as string[];
   if (!validTypes.includes(fields.location_type)) return "Invalid location type.";
+  if (fields.website_url && !isValidUrl(fields.website_url)) {
+    return "Website must be a valid http(s) URL.";
+  }
   return null;
 }
 
@@ -129,7 +133,7 @@ export async function duplicateLocationAction(businessId: string, locationId: st
   const { data: original } = await adminClient
     .from("business_locations")
     .select(
-      "label, location_type, address_line1, address_line2, city, region, postcode, country, formatted_address, latitude, longitude, geocode_status, phone, opening_hours",
+      "label, location_type, address_line1, address_line2, city, region, postcode, country, formatted_address, latitude, longitude, geocode_status, phone, website_url, opening_hours",
     )
     .eq("id", locationId)
     .maybeSingle();
