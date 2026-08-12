@@ -21,12 +21,15 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult> {
     return { status: "not_configured" };
   }
   // TEMPORARY diagnostic — narrowing down a live "invalid API key" report.
-  // Only the length and last 6 characters, never the full key, never
-  // returned to the client — visible in Vercel's server logs only. Remove
-  // once the root cause is confirmed.
-  console.log(
-    `[geocode diag] key length=${apiKey.length} tail=${apiKey.slice(-6)}`,
-  );
+  // A SHA-256 fingerprint, not the key itself — Vercel's log viewer
+  // auto-redacts anything containing the literal secret value (confirmed:
+  // it silently masked an earlier version of this log that included the
+  // last 6 raw characters), so a hash is the only way to compare values
+  // through the logs. Visible in Vercel's server logs only, never
+  // returned to the client. Remove once the root cause is confirmed.
+  const crypto = await import("crypto");
+  const fingerprint = crypto.createHash("sha256").update(apiKey).digest("hex").slice(0, 12);
+  console.log(`[geocode diag] key length=${apiKey.length} fingerprint=${fingerprint}`);
 
   const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
   url.searchParams.set("address", address);
