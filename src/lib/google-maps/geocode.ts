@@ -20,6 +20,13 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult> {
   if (!apiKey) {
     return { status: "not_configured" };
   }
+  // TEMPORARY diagnostic — narrowing down a live "invalid API key" report.
+  // Only the length and last 6 characters, never the full key, never
+  // returned to the client — visible in Vercel's server logs only. Remove
+  // once the root cause is confirmed.
+  console.log(
+    `[geocode diag] key length=${apiKey.length} tail=${apiKey.slice(-6)}`,
+  );
 
   const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
   url.searchParams.set("address", address);
