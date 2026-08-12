@@ -181,6 +181,84 @@ export async function sendVerificationEmailAction(memberId: string, email: strin
   revalidatePath(`/members/${memberId}`);
 }
 
+/**
+ * For a member created via /members/new (invite-based, no admin-typed
+ * password — see createMemberAction) whose original invite link expired
+ * or was lost before they set a password. Safe to call again on the same
+ * email — Supabase resends a fresh invite rather than erroring, as long
+ * as the member hasn't already completed setup (confirmed their email).
+ * Distinct from "Send verification email" above, which only re-confirms
+ * an address — it doesn't help someone who never set a password at all.
+ */
+export async function resendInviteAction(memberId: string, email: string) {
+  const session = await requireAdminSession();
+  const adminClient = createAdminClient();
+  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
+
+  // Same redirectTo fix as the initial invite (members/new/actions.ts) —
+  // resending had the identical missing-destination bug.
+  await adminClient.auth.admin.inviteUserByEmail(email, {
+    redirectTo: "https://privi.info/auth/confirm",
+  });
+
+  await logActivity({
+    adminId: session.userId,
+    adminEmail: session.email,
+    action: "resent invite email to",
+    entityType: "member",
+    entityId: memberId,
+    entityLabel: email,
+  });
+
+  revalidatePath(`/members/${memberId}`);
+}
+
+/**
+ * Bypasses email entirely — sets a password directly via the admin API,
+ * same escape hatch already used once to bootstrap the founder's own
+ * admin account when its reset link didn't work end to end (see
+ * admin_portal_auth_bootstrap memory). Needed because there's currently
+ * nowhere for a MEMBER invite/reset link to land at all (no such page
+ * exists on the website or App yet) — this isn't a shortcut around a
+ * working flow, it's the only way to get a member logged in for testing
+ * until that page exists. Use sparingly; this is a support/testing tool,
+ * not a replacement for members setting their own password once the real
+ * flow exists.
+ */
+export async function setMemberPasswordAction(
+  memberId: string,
+  _prevState: MemberActionState,
+  formData: FormData,
+): Promise<MemberActionState> {
+  const session = await requireAdminSession();
+  const password = String(formData.get("password") ?? "");
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+
+  const adminClient = createAdminClient();
+  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
+
+  const { error } = await adminClient.auth.admin.updateUserById(memberId, {
+    password,
+    email_confirm: true,
+  });
+
+  if (error) return { error: error.message };
+
+  await logActivity({
+    adminId: session.userId,
+    adminEmail: session.email,
+    action: "set a password directly for",
+    entityType: "member",
+    entityId: memberId,
+  });
+
+  revalidatePath(`/members/${memberId}`);
+  return { saved: true };
+}
+
 export async function markEmailVerifiedAction(memberId: string, label: string) {
   const session = await requireAdminSession();
   const adminClient = createAdminClient();

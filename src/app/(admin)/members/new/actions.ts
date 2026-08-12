@@ -36,8 +36,14 @@ export async function createMemberAction(
   // Invite-based, not an admin-typed password — matches the credential-
   // hygiene pattern already used to bootstrap the admin account. Fires
   // handle_new_user(), which creates the profiles row automatically.
+  // redirectTo points at the website's own landing page for this
+  // (website/src/app/auth/confirm/page.tsx) — without it, Supabase falls
+  // back to the bare Site URL with no code there to actually receive the
+  // session it hands over. Confirmed broken in production 2026-08-12
+  // before this fix.
   const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
     data: { first_name: firstName, last_name: lastName },
+    redirectTo: "https://privi.info/auth/confirm",
   });
 
   if (error || !data.user) {
