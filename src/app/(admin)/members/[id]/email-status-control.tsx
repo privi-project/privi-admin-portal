@@ -6,6 +6,7 @@ import {
   sendVerificationEmailAction,
   markEmailVerifiedAction,
   updateEmailAction,
+  resendInviteAction,
   type MemberActionState,
 } from "./actions";
 
@@ -26,6 +27,7 @@ export function EmailStatusControl({
   const [isPending, startTransition] = useTransition();
   const [editingEmail, setEditingEmail] = useState(false);
   const [sentMessage, setSentMessage] = useState(false);
+  const [inviteSentMessage, setInviteSentMessage] = useState(false);
 
   const updateWithId = updateEmailAction.bind(null, memberId);
   const [state, formAction, isSaving] = useActionState(updateWithId, initialState);
@@ -39,6 +41,21 @@ export function EmailStatusControl({
       {sentMessage && (
         <p className="text-sm text-status-success">
           Verification email sent to {email}.
+        </p>
+      )}
+      {inviteSentMessage && (
+        <p className="text-sm text-status-success">
+          Invite email resent to {email}.
+        </p>
+      )}
+
+      {!emailConfirmed && (
+        <p className="text-xs text-muted-dark">
+          &quot;Resend invite email&quot; is for a member who never finished
+          setting up their account (e.g. their original link expired) —
+          it&apos;s what actually lets them set a password. &quot;Send
+          verification email&quot; only re-confirms their address and
+          won&apos;t help if they can&apos;t log in at all.
         </p>
       )}
 
@@ -58,6 +75,20 @@ export function EmailStatusControl({
               className="rounded-lg border border-border-hairline px-4 py-2 text-sm font-medium disabled:opacity-60"
             >
               Send verification email
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                startTransition(async () => {
+                  await resendInviteAction(memberId, email);
+                  setInviteSentMessage(true);
+                  router.refresh();
+                })
+              }
+              className="rounded-lg border border-border-hairline px-4 py-2 text-sm font-medium disabled:opacity-60"
+            >
+              Resend invite email
             </button>
             <button
               type="button"

@@ -6,6 +6,7 @@ import { AdminNotesForm } from "./admin-notes-form";
 import { ComplimentaryControl } from "./complimentary-control";
 import { SuspendControl } from "./suspend-control";
 import { EmailStatusControl } from "./email-status-control";
+import { SetPasswordControl } from "./set-password-control";
 import { DangerZone } from "./danger-zone";
 import { SubscriptionPanel } from "./subscription-panel";
 
@@ -57,6 +58,7 @@ export default async function MemberDetailPage({
             email={member.email}
             emailConfirmed={member.email_confirmed}
           />
+          <SetPasswordControl memberId={id} />
           <p className="text-xs text-muted-dark">
             Preferred area: {member.preferred_area ?? "Not set yet (expected until first app launch)"}
           </p>

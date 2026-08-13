@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { signInAction, type LoginState } from "./actions";
+import { PasswordInput } from "@/components/password-input";
 
 const initialState: LoginState = undefined;
 
@@ -41,13 +42,7 @@ export default function LoginPage() {
 
         <label className="flex flex-col gap-1 text-sm">
           Password
-          <input
-            type="password"
-            name="password"
-            required
-            autoComplete="current-password"
-            className="rounded-lg border border-border-hairline px-3 py-2"
-          />
+          <PasswordInput name="password" required autoComplete="current-password" />
         </label>
 
         <button
