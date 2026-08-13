@@ -69,7 +69,7 @@ export function SeasonBannerForm({
           name="title"
           required
           defaultValue={initial?.title}
-          placeholder="e.g. It's summer!"
+          placeholder="e.g. Summer offers are live"
           className="rounded-lg border border-border-hairline px-3 py-2"
         />
       </label>
@@ -81,7 +81,7 @@ export function SeasonBannerForm({
           rows={3}
           required
           defaultValue={initial?.message}
-          placeholder="e.g. Check out our swimwear partners"
+          placeholder="e.g. Save across dining, fitness and days out this season with your Privi membership."
           className="rounded-lg border border-border-hairline px-3 py-2"
         />
       </label>
