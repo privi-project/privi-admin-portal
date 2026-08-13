@@ -130,10 +130,19 @@ export async function moveCategoryAction(id: string, direction: "up" | "down") {
   const adminClient = createAdminClient();
   if (!adminClient) throw new Error("Admin Supabase client is not configured.");
 
+  // Secondary tiebreak on created_at, kept in sync with listCategories()'s
+  // own ordering — found live 2026-08-13 that two categories had ended up
+  // sharing the same display_order (a create-time race in
+  // createCategoryAction's "read max, add 1" logic), which made this
+  // query's order unstable between requests and made the swap below a
+  // silent no-op whenever it landed on the tied pair. Data has been
+  // renumbered to remove the existing duplicate; this tiebreak guards
+  // against a future one causing the same invisible failure.
   const { data: categories } = await adminClient
     .from("categories")
     .select("id, display_order")
-    .order("display_order", { ascending: true });
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
   if (!categories) return;
 
@@ -146,14 +155,21 @@ export async function moveCategoryAction(id: string, direction: "up" | "down") {
   const current = categories[index];
   const swapWith = categories[swapIndex];
 
-  await adminClient
+  // Both updates' errors are now actually checked — previously swallowed
+  // silently, which is exactly how the duplicate display_order above went
+  // undetected (a unique-constraint conflict or any other DB error would
+  // have failed the swap with no visible sign anything went wrong).
+  const { error: firstError } = await adminClient
     .from("categories")
     .update({ display_order: swapWith.display_order })
     .eq("id", current.id);
-  await adminClient
+  if (firstError) throw new Error(`Failed to move category: ${firstError.message}`);
+
+  const { error: secondError } = await adminClient
     .from("categories")
     .update({ display_order: current.display_order })
     .eq("id", swapWith.id);
+  if (secondError) throw new Error(`Failed to move category: ${secondError.message}`);
 
   revalidatePath("/categories");
 }
