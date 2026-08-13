@@ -1,10 +1,11 @@
 import { NavLink } from "@/components/nav-link";
 import { notFound, redirect } from "next/navigation";
 import { NotificationForm } from "@/components/notification-form";
-import { getNotification } from "@/lib/notifications/queries";
+import { getNotification, getNotificationLocationIds } from "@/lib/notifications/queries";
 import { listBusinesses } from "@/lib/businesses/queries";
 import { listAllOffers } from "@/lib/offers/queries";
 import { listMembers } from "@/lib/members/queries";
+import { listAllLocations } from "@/lib/locations/queries";
 import { updateNotificationAction } from "../../actions";
 import { NotificationCancelControl } from "./notification-cancel-control";
 import { NotificationDeleteControl } from "./notification-delete-control";
@@ -26,10 +27,12 @@ export default async function EditNotificationPage({
     redirect(`/notifications/${id}/preview`);
   }
 
-  const [businesses, offers, members] = await Promise.all([
+  const [businesses, offers, members, locations, selectedLocationIds] = await Promise.all([
     listBusinesses(),
     listAllOffers(),
     listMembers(),
+    listAllLocations(),
+    getNotificationLocationIds(id),
   ]);
 
   const updateWithId = updateNotificationAction.bind(null, id);
@@ -77,6 +80,13 @@ export default async function EditNotificationPage({
           first_name: m.first_name,
           last_name: m.last_name,
         }))}
+        locations={locations.map((l) => ({
+          id: l.id,
+          business_id: l.business_id,
+          label: l.label,
+          formatted_address: l.formatted_address,
+          location_type: l.location_type,
+        }))}
         initial={{
           title: notification.title,
           body: notification.body,
@@ -89,6 +99,7 @@ export default async function EditNotificationPage({
           audience_reference_business_id: notification.audience_reference_business_id,
           scheduled_at: notification.scheduled_at,
           expires_at: notification.expires_at,
+          selectedLocationIds,
         }}
       />
     </div>

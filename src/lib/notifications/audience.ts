@@ -13,6 +13,11 @@ export type AudienceCriteria = {
    * (respecting its location_scope) instead of the whole business's — see
    * getOfferLocations below. */
   linkedOfferId?: string | null;
+  /** When set (2026-08-13, "New location" notifications), area targeting
+   * matches ONLY these specific locations instead of every location the
+   * linked business has — takes priority over linkedOfferId and
+   * audienceReferenceBusinessId. See getSpecificLocations below. */
+  linkedLocationIds?: string[] | null;
 };
 
 type LatLng = { latitude: number; longitude: number };
@@ -115,15 +120,30 @@ async function getOfferLocations(adminClient: AdminClient, offerId: string): Pro
     .filter((l): l is LatLng => l?.latitude != null && l?.longitude != null);
 }
 
+async function getSpecificLocations(adminClient: AdminClient, locationIds: string[]): Promise<LatLng[]> {
+  const { data } = await adminClient
+    .from("business_locations")
+    .select("latitude, longitude")
+    .in("id", locationIds)
+    .not("latitude", "is", null);
+
+  return (data ?? []).filter(
+    (l): l is LatLng => l.latitude != null && l.longitude != null,
+  );
+}
+
 async function computeAreaAudience(criteria: AudienceCriteria): Promise<AudienceResult> {
   const adminClient = createAdminClient();
   if (!adminClient) return { count: 0, memberIds: [] };
 
-  const points = criteria.linkedOfferId
-    ? await getOfferLocations(adminClient, criteria.linkedOfferId)
-    : criteria.audienceReferenceBusinessId
-      ? await getBusinessLocations(adminClient, criteria.audienceReferenceBusinessId)
-      : [];
+  const points =
+    criteria.linkedLocationIds && criteria.linkedLocationIds.length > 0
+      ? await getSpecificLocations(adminClient, criteria.linkedLocationIds)
+      : criteria.linkedOfferId
+        ? await getOfferLocations(adminClient, criteria.linkedOfferId)
+        : criteria.audienceReferenceBusinessId
+          ? await getBusinessLocations(adminClient, criteria.audienceReferenceBusinessId)
+          : [];
 
   if (points.length === 0) {
     return { count: 0, memberIds: [] };

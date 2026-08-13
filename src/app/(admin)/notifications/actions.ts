@@ -49,7 +49,10 @@ function readNotificationFields(formData: FormData) {
   };
 }
 
-function validateNotificationFields(fields: ReturnType<typeof readNotificationFields>): string | null {
+function validateNotificationFields(
+  fields: ReturnType<typeof readNotificationFields>,
+  locationIds: string[],
+): string | null {
   if (!isRequired(fields.title)) return "Title is required.";
   if (!isRequired(fields.body)) return "Body is required.";
   if (!NOTIFICATION_TYPE_VALUES.includes(fields.notification_type)) return "Invalid notification type.";
@@ -60,7 +63,27 @@ function validateNotificationFields(fields: ReturnType<typeof readNotificationFi
   if (fields.audience_type === "area" && !fields.audience_reference_business_id) {
     return "Select a reference business for area-based targeting.";
   }
+  if (fields.notification_type === "new_location" && locationIds.length === 0) {
+    return "Select at least one location for a New location notification.";
+  }
   return null;
+}
+
+async function syncNotificationLocations(
+  notificationId: string,
+  notificationType: string,
+  locationIds: string[],
+) {
+  const adminClient = createAdminClient();
+  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
+
+  await adminClient.from("notification_locations").delete().eq("notification_id", notificationId);
+
+  if (notificationType === "new_location" && locationIds.length > 0) {
+    await adminClient
+      .from("notification_locations")
+      .insert(locationIds.map((locationId) => ({ notification_id: notificationId, location_id: locationId })));
+  }
 }
 
 export async function createNotificationAction(
@@ -69,8 +92,9 @@ export async function createNotificationAction(
 ): Promise<NotificationFormState> {
   const session = await requireAdminSession();
   const fields = readNotificationFields(formData);
+  const locationIds = formData.getAll("locationIds").map(String);
 
-  const validationError = validateNotificationFields(fields);
+  const validationError = validateNotificationFields(fields, locationIds);
   if (validationError) return { error: validationError };
 
   const adminClient = createAdminClient();
@@ -85,6 +109,8 @@ export async function createNotificationAction(
   if (error || !data) {
     return { error: error?.message ?? "Could not create the notification." };
   }
+
+  await syncNotificationLocations(data.id, fields.notification_type, locationIds);
 
   await logActivity({
     adminId: session.userId,
@@ -110,8 +136,9 @@ export async function updateNotificationAction(
 ): Promise<NotificationFormState> {
   const session = await requireAdminSession();
   const fields = readNotificationFields(formData);
+  const locationIds = formData.getAll("locationIds").map(String);
 
-  const validationError = validateNotificationFields(fields);
+  const validationError = validateNotificationFields(fields, locationIds);
   if (validationError) return { error: validationError };
 
   const adminClient = createAdminClient();
@@ -123,6 +150,8 @@ export async function updateNotificationAction(
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  await syncNotificationLocations(id, fields.notification_type, locationIds);
 
   await logActivity({
     adminId: session.userId,
@@ -152,13 +181,16 @@ export async function sendNotificationAction(id: string, title: string) {
   const adminClient = createAdminClient();
   if (!adminClient) throw new Error("Admin Supabase client is not configured.");
 
-  const { data: notification } = await adminClient
-    .from("notifications")
-    .select(
-      "audience_type, audience_member_id, audience_radius_miles, audience_reference_business_id, linked_offer_id",
-    )
-    .eq("id", id)
-    .maybeSingle();
+  const [{ data: notification }, { data: locationRows }] = await Promise.all([
+    adminClient
+      .from("notifications")
+      .select(
+        "audience_type, audience_member_id, audience_radius_miles, audience_reference_business_id, linked_offer_id",
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    adminClient.from("notification_locations").select("location_id").eq("notification_id", id),
+  ]);
 
   if (!notification) return;
 
@@ -168,6 +200,7 @@ export async function sendNotificationAction(id: string, title: string) {
     audienceRadiusMiles: notification.audience_radius_miles,
     audienceReferenceBusinessId: notification.audience_reference_business_id,
     linkedOfferId: notification.linked_offer_id,
+    linkedLocationIds: (locationRows ?? []).map((r) => r.location_id),
   });
 
   await adminClient
@@ -264,6 +297,19 @@ export async function duplicateNotificationAction(id: string) {
     .single();
 
   if (error || !copy) return;
+
+  if (original.notification_type === "new_location") {
+    const { data: originalLocations } = await adminClient
+      .from("notification_locations")
+      .select("location_id")
+      .eq("notification_id", id);
+
+    if (originalLocations && originalLocations.length > 0) {
+      await adminClient.from("notification_locations").insert(
+        originalLocations.map((row) => ({ notification_id: copy.id, location_id: row.location_id })),
+      );
+    }
+  }
 
   await logActivity({
     adminId: session.userId,

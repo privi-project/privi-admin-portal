@@ -356,7 +356,7 @@ create table if not exists public.notifications (
   title text not null,
   body text not null,
   notification_type text not null default 'general'
-    check (notification_type in ('new_business', 'new_offer', 'offer_ending_soon', 'general')),
+    check (notification_type in ('new_business', 'new_offer', 'offer_ending_soon', 'general', 'new_location')),
   linked_business_id uuid references public.businesses(id) on delete set null,
   linked_offer_id uuid references public.offers(id) on delete set null,
   audience_type text not null
@@ -380,6 +380,32 @@ alter table public.notifications enable row level security;
 -- Intentionally no policies — service_role-only access.
 
 create index if not exists notifications_status_idx on public.notifications (status);
+
+-- 2026-08-13: existing production tables predate 'new_location' — this
+-- table's own `create table if not exists` above is a no-op once the
+-- table already exists, so the constraint needs updating explicitly too.
+-- Default Postgres-generated name for an unnamed column check constraint.
+alter table public.notifications drop constraint if exists notifications_notification_type_check;
+alter table public.notifications add constraint notifications_notification_type_check
+  check (notification_type in ('new_business', 'new_offer', 'offer_ending_soon', 'general', 'new_location'));
+
+-- Which specific location(s) a 'new_location' notification targets —
+-- mirrors offer_locations exactly (same table shape, same reasoning: a
+-- business can have several locations, and a "new branch opened" or "new
+-- offer here" notification/offer should only match members near the
+-- SPECIFIC location(s) involved, not every branch the business has).
+-- Added 2026-08-13 after confirming live that area-targeting a whole
+-- business (audience_reference_business_id) matches ALL its locations —
+-- correct for "new business"/general announcements, wrong for "this one
+-- new branch opened".
+create table if not exists public.notification_locations (
+  notification_id uuid not null references public.notifications(id) on delete cascade,
+  location_id uuid not null references public.business_locations(id) on delete cascade,
+  primary key (notification_id, location_id)
+);
+
+alter table public.notification_locations enable row level security;
+-- Same service-role-only pattern as notifications itself — no policies.
 
 -- PRIVI_Backend_Schema_Reference.md's "time-constraint/expiry field" — for
 -- GPS-only members (no stored preferred_area), the future App checks active

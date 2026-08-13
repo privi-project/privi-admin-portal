@@ -42,3 +42,18 @@ export async function getNotification(id: string): Promise<Notification | null> 
   const { data } = await adminClient.from("notifications").select("*").eq("id", id).maybeSingle();
   return data ?? null;
 }
+
+// Mirrors getOfferLocationIds in offers/queries.ts — used by the edit
+// page to pre-check the right boxes, and by the preview/send flow to
+// compute the precise audience for a "New location" notification.
+export async function getNotificationLocationIds(id: string): Promise<string[]> {
+  const adminClient = createAdminClient();
+  if (!adminClient) return [];
+
+  const { data } = await adminClient
+    .from("notification_locations")
+    .select("location_id")
+    .eq("notification_id", id);
+
+  return (data ?? []).map((row) => row.location_id);
+}

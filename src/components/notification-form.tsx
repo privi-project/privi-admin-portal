@@ -9,6 +9,13 @@ type NotificationFormState = { error?: string } | undefined;
 type BusinessOption = { id: string; name: string };
 type OfferOption = { id: string; business_id: string; title: string; business_name: string };
 type MemberOption = { id: string; email: string; first_name: string; last_name: string };
+type LocationOption = {
+  id: string;
+  business_id: string;
+  label: string | null;
+  formatted_address: string | null;
+  location_type: string;
+};
 
 type NotificationFormProps = {
   formAction: (
@@ -19,6 +26,7 @@ type NotificationFormProps = {
   businesses: BusinessOption[];
   offers: OfferOption[];
   members: MemberOption[];
+  locations: LocationOption[];
   initial?: {
     title?: string;
     body?: string;
@@ -31,6 +39,7 @@ type NotificationFormProps = {
     audience_reference_business_id?: string | null;
     scheduled_at?: string | null;
     expires_at?: string | null;
+    selectedLocationIds?: string[];
   };
 };
 
@@ -53,6 +62,7 @@ export function NotificationForm({
   businesses,
   offers,
   members,
+  locations,
   initial,
 }: NotificationFormProps) {
   const [state, action, isPending] = useActionState(formAction, undefined);
@@ -65,6 +75,7 @@ export function NotificationForm({
   const [audienceType, setAudienceType] = useState(initial?.audience_type ?? "area");
 
   const isOfferType = notificationType === "new_offer" || notificationType === "offer_ending_soon";
+  const isLocationType = notificationType === "new_location";
 
   // Business the offer picker is currently scoped to — keeps the offer
   // dropdown short (that business's offers only) instead of every offer
@@ -80,16 +91,34 @@ export function NotificationForm({
     [offers, offerBusinessId],
   );
 
+  // Same idea as offerBusinessId above — scopes the location checkbox
+  // list to one business at a time (2026-08-13, "New location" type).
+  const [locationBusinessId, setLocationBusinessId] = useState(
+    (isLocationType ? initial?.linked_business_id : null) ??
+      locations.find((l) => initial?.selectedLocationIds?.includes(l.id))?.business_id ??
+      "",
+  );
+
+  const businessLocations = useMemo(
+    () => locations.filter((l) => l.business_id === locationBusinessId),
+    [locations, locationBusinessId],
+  );
+
   // A notification linked to a business or offer already has a natural
   // centre point — no need to make the admin pick it again for area
   // targeting. Only "General" notifications (no linked entity) need the
-  // standalone reference-business picker.
+  // standalone reference-business picker. "New location" also counts as
+  // linked (to locationBusinessId) even though its actual area-targeting
+  // math uses the SPECIFIC selected locations, not every location the
+  // business has — see linkedLocationIds in audience.ts.
   const linkedBusinessId =
     notificationType === "new_business"
       ? initial?.linked_business_id
       : isOfferType
         ? offerBusinessId
-        : null;
+        : isLocationType
+          ? locationBusinessId
+          : null;
   const showsReferencePicker = audienceType === "area" && !linkedBusinessId;
 
   return (
@@ -231,6 +260,56 @@ export function NotificationForm({
         </>
       )}
 
+      {isLocationType && (
+        <>
+          <label className="flex flex-col gap-1 text-sm">
+            Business
+            <select
+              name="linked_business_id"
+              required
+              value={locationBusinessId}
+              onChange={(e) => {
+                setLocationBusinessId(e.target.value);
+                setIsDirty(true);
+              }}
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            >
+              <option value="" disabled>
+                Select a business
+              </option>
+              {businesses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <fieldset className="flex flex-col gap-1 text-sm">
+            <legend>Which location(s) — audience targeting matches only these, not the business's other locations</legend>
+            <div className="grid grid-cols-1 gap-1 rounded-lg border border-border-hairline p-3">
+              {!locationBusinessId && (
+                <p className="text-xs text-muted-dark">Select a business first.</p>
+              )}
+              {locationBusinessId && businessLocations.length === 0 && (
+                <p className="text-xs text-muted-dark">This business has no locations yet.</p>
+              )}
+              {businessLocations.map((loc) => (
+                <label key={loc.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="locationIds"
+                    value={loc.id}
+                    defaultChecked={initial?.selectedLocationIds?.includes(loc.id)}
+                  />
+                  {loc.label ?? loc.formatted_address ?? loc.location_type}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </>
+      )}
+
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm">Audience</legend>
         <div className="flex flex-col gap-1 rounded-lg border border-border-hairline p-3">
@@ -278,7 +357,9 @@ export function NotificationForm({
                 {businesses.find((b) => b.id === linkedBusinessId)?.name ?? "the linked business"}
                 {isOfferType
                   ? " — for offers only available at specific locations, this automatically matches just those locations, not the whole business."
-                  : "."}
+                  : isLocationType
+                    ? " — matches only the location(s) selected above, not every branch this business has."
+                    : "."}
               </p>
             )}
             <label className="flex flex-col gap-1 text-sm">

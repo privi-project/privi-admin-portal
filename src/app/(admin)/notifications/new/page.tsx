@@ -3,13 +3,15 @@ import { NotificationForm } from "@/components/notification-form";
 import { listBusinesses } from "@/lib/businesses/queries";
 import { listAllOffers } from "@/lib/offers/queries";
 import { listMembers } from "@/lib/members/queries";
+import { listAllLocations } from "@/lib/locations/queries";
 import { createNotificationAction } from "../actions";
 
 export default async function NewNotificationPage() {
-  const [businesses, offers, members] = await Promise.all([
+  const [businesses, offers, members, locations] = await Promise.all([
     listBusinesses(),
     listAllOffers(),
     listMembers(),
+    listAllLocations(),
   ]);
 
   return (
@@ -33,6 +35,13 @@ export default async function NewNotificationPage() {
           email: m.email,
           first_name: m.first_name,
           last_name: m.last_name,
+        }))}
+        locations={locations.map((l) => ({
+          id: l.id,
+          business_id: l.business_id,
+          label: l.label,
+          formatted_address: l.formatted_address,
+          location_type: l.location_type,
         }))}
       />
     </div>

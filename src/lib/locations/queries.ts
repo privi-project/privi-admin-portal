@@ -37,6 +37,29 @@ export async function listLocationsForBusiness(businessId: string): Promise<Loca
   return data ?? [];
 }
 
+export type LocationWithBusinessName = Location & { business_name: string };
+
+// Flat cross-business list — used by the notification form's "New
+// location" picker (2026-08-13), same pattern as listAllOffers in
+// offers/queries.ts. Active locations only; a draft/inactive location
+// isn't something to announce yet.
+export async function listAllLocations(): Promise<LocationWithBusinessName[]> {
+  const adminClient = createAdminClient();
+  if (!adminClient) return [];
+
+  const { data } = await adminClient
+    .from("business_locations")
+    .select("*, businesses(name)")
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
+  type Row = Location & { businesses: { name: string } | null };
+  return ((data as unknown as Row[]) ?? []).map((row) => ({
+    ...row,
+    business_name: row.businesses?.name ?? "Unknown business",
+  }));
+}
+
 export async function getLocation(id: string): Promise<Location | null> {
   const adminClient = createAdminClient();
   if (!adminClient) return null;

@@ -3,6 +3,7 @@
 // spec, not admin-editable.
 export const NOTIFICATION_TYPES = [
   { value: "new_business", label: "New business" },
+  { value: "new_location", label: "New location" },
   { value: "new_offer", label: "New offer" },
   { value: "offer_ending_soon", label: "Offer ending soon" },
   { value: "general", label: "General" },

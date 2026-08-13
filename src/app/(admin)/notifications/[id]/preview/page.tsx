@@ -1,10 +1,11 @@
 import { NavLink } from "@/components/nav-link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/status-badge";
-import { getNotification } from "@/lib/notifications/queries";
+import { getNotification, getNotificationLocationIds } from "@/lib/notifications/queries";
 import { computeAudience, type AudienceType } from "@/lib/notifications/audience";
 import { getBusiness } from "@/lib/businesses/queries";
 import { getOffer } from "@/lib/offers/queries";
+import { getLocation } from "@/lib/locations/queries";
 import {
   sendNotificationAction,
   scheduleNotificationAction,
@@ -20,16 +21,20 @@ export default async function NotificationPreviewPage({
   const notification = await getNotification(id);
   if (!notification) notFound();
 
-  const [audience, linkedBusiness, linkedOffer] = await Promise.all([
+  const locationIds = await getNotificationLocationIds(id);
+
+  const [audience, linkedBusiness, linkedOffer, linkedLocations] = await Promise.all([
     computeAudience({
       audienceType: notification.audience_type as AudienceType,
       audienceMemberId: notification.audience_member_id,
       audienceRadiusMiles: notification.audience_radius_miles,
       audienceReferenceBusinessId: notification.audience_reference_business_id,
       linkedOfferId: notification.linked_offer_id,
+      linkedLocationIds: locationIds,
     }),
     notification.linked_business_id ? getBusiness(notification.linked_business_id) : null,
     notification.linked_offer_id ? getOffer(notification.linked_offer_id) : null,
+    Promise.all(locationIds.map((locationId) => getLocation(locationId))),
   ]);
 
   const isEditable = notification.status === "draft" || notification.status === "scheduled";
@@ -62,6 +67,15 @@ export default async function NotificationPreviewPage({
         )}
         {linkedOffer && (
           <p className="mt-3 text-xs text-ivory/60">Linked offer: {linkedOffer.title}</p>
+        )}
+        {linkedLocations.length > 0 && (
+          <p className="mt-3 text-xs text-ivory/60">
+            Location(s):{" "}
+            {linkedLocations
+              .filter((l): l is NonNullable<typeof l> => l !== null)
+              .map((l) => l.label ?? l.formatted_address ?? l.location_type)
+              .join(", ")}
+          </p>
         )}
         {notification.expires_at && (
           <p className="mt-3 text-xs text-ivory/60">
