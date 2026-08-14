@@ -46,6 +46,7 @@ export async function LocationsList({ businessId }: { businessId: string }) {
                 <p className="truncate text-xs text-muted-dark">
                   {locationTypeLabel(location.location_type)}
                   {location.formatted_address ? ` · ${location.formatted_address}` : ""}
+                  {location.is_accessible ? " · Accessible" : ""}
                 </p>
                 {needsAddress && location.geocode_status === "pending" && (
                   <p className="text-xs text-status-warning">No coordinates set</p>

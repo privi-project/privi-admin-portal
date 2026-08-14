@@ -163,11 +163,6 @@ export function EditBusinessForm({
         />
       </label>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="is_accessible" defaultChecked={business.is_accessible} />
-        Accessible venue
-      </label>
-
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm">Featured</legend>
         <div className="flex flex-col gap-1 rounded-lg border border-border-hairline p-3 text-sm">

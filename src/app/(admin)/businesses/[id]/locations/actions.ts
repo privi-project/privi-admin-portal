@@ -35,6 +35,7 @@ function readLocationFields(formData: FormData) {
     country: String(formData.get("country") ?? "").trim() || null,
     phone: String(formData.get("phone") ?? "").trim() || null,
     website_url: String(formData.get("website_url") ?? "").trim() || null,
+    is_accessible: formData.get("is_accessible") === "on",
     opening_hours: readOpeningHours(formData),
     formatted_address: String(formData.get("formatted_address") ?? "").trim() || null,
     latitude: formData.get("latitude") ? Number(formData.get("latitude")) : null,
@@ -133,7 +134,7 @@ export async function duplicateLocationAction(businessId: string, locationId: st
   const { data: original } = await adminClient
     .from("business_locations")
     .select(
-      "label, location_type, address_line1, address_line2, city, region, postcode, country, formatted_address, latitude, longitude, geocode_status, phone, website_url, opening_hours",
+      "label, location_type, address_line1, address_line2, city, region, postcode, country, formatted_address, latitude, longitude, geocode_status, phone, website_url, is_accessible, opening_hours",
     )
     .eq("id", locationId)
     .maybeSingle();

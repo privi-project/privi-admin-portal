@@ -10,7 +10,6 @@ export type Business = {
   contact_name: string;
   contact_email: string;
   contact_phone: string | null;
-  is_accessible: boolean;
   internal_notes: string | null;
   status: string;
   featured_level: "none" | "category" | "global";

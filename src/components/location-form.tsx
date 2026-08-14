@@ -42,6 +42,7 @@ type LocationFormProps = {
     longitude?: number | null;
     geocode_status?: string;
     opening_hours?: OpeningHours | null;
+    is_accessible?: boolean;
   };
 };
 
@@ -77,6 +78,7 @@ export function LocationForm({
   const [geocodeMessage, setGeocodeMessage] = useState<string | null>(null);
   const [isGeocoding, startGeocode] = useTransition();
   const [hasOpeningHours, setHasOpeningHours] = useState(!!initial?.opening_hours);
+  const [isAccessible, setIsAccessible] = useState(!!initial?.is_accessible);
   const [openingHours, setOpeningHours] = useState<OpeningHours>(
     initial?.opening_hours ?? emptyOpeningHours(),
   );
@@ -323,6 +325,24 @@ export function LocationForm({
           one location, this is the only place to set its website.
         </span>
       </label>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="is_accessible"
+          checked={isAccessible}
+          onChange={(e) => {
+            setIsAccessible(e.target.checked);
+            setIsDirty(true);
+          }}
+        />
+        Wheelchair / step-free accessible
+      </label>
+      <p className="-mt-2 text-xs text-muted-dark">
+        Per-location, not per-business — a national business can have some
+        accessible sites and some that aren&apos;t. Tick this only for
+        locations that genuinely are.
+      </p>
 
       <div className="flex flex-col gap-2 border-t border-border-hairline pt-4 text-sm">
         <label className="flex items-center gap-2 font-medium">

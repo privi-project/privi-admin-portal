@@ -67,15 +67,12 @@ export default async function BusinessPreviewPage({
           <p className="mt-3 text-sm text-ivory/80">{business.short_description}</p>
         )}
 
-        {business.is_accessible && (
-          <p className="mt-3 text-xs text-teal">Accessible venue</p>
-        )}
-
         {activeLocations.length > 0 && (
           <div className="mt-4 space-y-1 text-xs text-ivory/70">
             {activeLocations.map((loc) => (
               <p key={loc.id}>
                 {loc.formatted_address ?? loc.label ?? loc.location_type}
+                {loc.is_accessible && <span className="ml-2 text-teal">Accessible</span>}
               </p>
             ))}
           </div>

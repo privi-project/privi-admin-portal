@@ -529,3 +529,16 @@ alter table public.businesses add column if not exists about_description text;
 alter table public.businesses drop column if exists website_url;
 alter table public.business_locations add column if not exists website_url text;
 alter table public.business_locations add column if not exists opening_hours jsonb;
+
+-- Same reasoning as website_url/opening_hours above, found 2026-08-14: a
+-- national business can have SOME accessible locations and some that
+-- aren't (e.g. 2 of 5 branches) — a single whole-business is_accessible
+-- flag can't represent that without being actively misleading either way
+-- (ticking it implies every location is accessible; leaving it unticked
+-- hides the genuinely accessible branches from the App's "Accessible"
+-- filter entirely). Moves to business_locations so each location states
+-- its own truth. The App's accessibility filter now checks the SPECIFIC
+-- location a member would actually be matched to (nearest one), not a
+-- blanket business-wide value — see app/src/services/businesses.ts.
+alter table public.businesses drop column if exists is_accessible;
+alter table public.business_locations add column if not exists is_accessible boolean not null default false;

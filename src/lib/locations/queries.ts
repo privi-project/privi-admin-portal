@@ -19,6 +19,7 @@ export type Location = {
   phone: string | null;
   website_url: string | null;
   opening_hours: OpeningHours | null;
+  is_accessible: boolean;
   status: string;
   created_at: string;
   updated_at: string;

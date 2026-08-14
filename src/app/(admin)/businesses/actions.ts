@@ -25,7 +25,6 @@ function readBusinessFields(formData: FormData) {
     contact_name: String(formData.get("contact_name") ?? "").trim(),
     contact_email: String(formData.get("contact_email") ?? "").trim(),
     contact_phone: String(formData.get("contact_phone") ?? "").trim() || null,
-    is_accessible: formData.get("is_accessible") === "on",
     internal_notes: String(formData.get("internal_notes") ?? "").trim() || null,
     featured_level: String(formData.get("featured_level") ?? "none"),
   };

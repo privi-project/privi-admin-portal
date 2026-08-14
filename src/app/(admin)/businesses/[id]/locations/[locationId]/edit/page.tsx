@@ -48,6 +48,7 @@ export default async function EditLocationPage({
           country: location.country ?? "",
           phone: location.phone ?? "",
           website_url: location.website_url ?? "",
+          is_accessible: location.is_accessible,
           formatted_address: location.formatted_address,
           latitude: location.latitude,
           longitude: location.longitude,
