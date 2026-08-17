@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { OFFER_TYPES, REDEMPTION_METHODS, REDEEM_WHERE_OPTIONS } from "@/lib/offer-config";
+import { OFFER_TYPES, REDEMPTION_METHODS } from "@/lib/offer-config";
 import { useUnsavedChangesGuard } from "@/lib/navigation-blocker";
 
 type OfferFormState = { error?: string } | undefined;
@@ -194,21 +194,31 @@ export function OfferForm({
         </select>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Where can it be used?
-        <select
-          name="redeem_where"
-          required
-          defaultValue={initial?.redeem_where ?? "in_store"}
-          className="rounded-lg border border-border-hairline px-3 py-2"
-        >
-          {REDEEM_WHERE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <fieldset className="flex flex-col gap-2 text-sm">
+        <legend>Where can it be used?</legend>
+        <div className="flex flex-col gap-1.5 rounded-lg border border-border-hairline p-3">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="redeem_in_person"
+              defaultChecked={(initial?.redeem_where ?? "in_store") !== "online"}
+            />
+            In person
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="redeem_online"
+              defaultChecked={initial?.redeem_where === "online" || initial?.redeem_where === "both"}
+            />
+            Online
+          </label>
+        </div>
+        <p className="text-xs text-muted-dark">
+          Tick both if the business takes bookings/orders online as well as
+          in person — members will see &quot;in person or online.&quot;
+        </p>
+      </fieldset>
 
       <label className="flex flex-col gap-1 text-sm">
         Redemption code / barcode value

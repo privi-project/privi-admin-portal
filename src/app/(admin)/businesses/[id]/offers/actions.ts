@@ -6,12 +6,24 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminSession } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
 import { isRequired } from "@/lib/validation";
-import { OFFER_TYPES, REDEMPTION_METHODS, REDEEM_WHERE_OPTIONS } from "@/lib/offer-config";
+import { OFFER_TYPES, REDEMPTION_METHODS } from "@/lib/offer-config";
 import { createAutoDraftNotification } from "@/lib/notifications/auto-draft";
 
 export type OfferFormState = { error?: string } | undefined;
 
 const LOCATION_SCOPES = ["all", "selected", "online", "national", "regional"];
+
+// The form shows two checkboxes (in person / online) rather than a single
+// select — more natural for the founder to fill in from what a business
+// tells them ("we take online bookings too"). Both ticked -> 'both'.
+function deriveRedeemWhere(formData: FormData): string {
+  const inPerson = formData.get("redeem_in_person") === "on";
+  const online = formData.get("redeem_online") === "on";
+  if (inPerson && online) return "both";
+  if (online) return "online";
+  if (inPerson) return "in_store";
+  return "";
+}
 
 function readOfferFields(formData: FormData) {
   return {
@@ -23,7 +35,7 @@ function readOfferFields(formData: FormData) {
     availability: String(formData.get("availability") ?? "").trim() || null,
     redemption_method: String(formData.get("redemption_method") ?? ""),
     redemption_value: String(formData.get("redemption_value") ?? "").trim() || null,
-    redeem_where: String(formData.get("redeem_where") ?? "in_store"),
+    redeem_where: deriveRedeemWhere(formData),
     location_scope: String(formData.get("location_scope") ?? "all"),
     start_date: String(formData.get("start_date") ?? "").trim() || null,
     expiry_date: String(formData.get("expiry_date") ?? "").trim() || null,
@@ -41,9 +53,8 @@ function validateOfferFields(fields: ReturnType<typeof readOfferFields>): string
     return "Select a valid redemption method.";
   }
 
-  const validRedeemWhere = REDEEM_WHERE_OPTIONS.map((o) => o.value) as string[];
-  if (!validRedeemWhere.includes(fields.redeem_where)) {
-    return "Select where the offer can be redeemed.";
+  if (!fields.redeem_where) {
+    return "Tick at least one: in person and/or online.";
   }
 
   if (!LOCATION_SCOPES.includes(fields.location_scope)) return "Invalid location scope.";
