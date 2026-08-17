@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { OFFER_TYPES, REDEMPTION_METHODS } from "@/lib/offer-config";
+import { OFFER_TYPES, REDEMPTION_METHODS, REDEEM_WHERE_OPTIONS } from "@/lib/offer-config";
 import { useUnsavedChangesGuard } from "@/lib/navigation-blocker";
 
 type OfferFormState = { error?: string } | undefined;
@@ -29,6 +29,7 @@ type OfferFormProps = {
     availability?: string | null;
     redemption_method?: string;
     redemption_value?: string | null;
+    redeem_where?: string;
     location_scope?: string;
     start_date?: string | null;
     expiry_date?: string | null;
@@ -188,6 +189,22 @@ export function OfferForm({
           {REDEMPTION_METHODS.map((m) => (
             <option key={m.value} value={m.value}>
               {m.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        Where can it be used?
+        <select
+          name="redeem_where"
+          required
+          defaultValue={initial?.redeem_where ?? "in_store"}
+          className="rounded-lg border border-border-hairline px-3 py-2"
+        >
+          {REDEEM_WHERE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
             </option>
           ))}
         </select>

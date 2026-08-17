@@ -56,6 +56,7 @@ export default async function EditOfferPage({
           availability: offer.availability,
           redemption_method: offer.redemption_method,
           redemption_value: offer.redemption_value,
+          redeem_where: offer.redeem_where,
           location_scope: offer.location_scope,
           start_date: offer.start_date,
           expiry_date: offer.expiry_date,

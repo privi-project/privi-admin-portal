@@ -23,3 +23,15 @@ export const REDEMPTION_METHODS = [
 ] as const;
 
 export type RedemptionMethod = (typeof REDEMPTION_METHODS)[number]["value"];
+
+// Where the code/barcode can actually be used — separate from
+// REDEMPTION_METHODS above, which is about how it's presented, not where.
+// A physical-location business can still take bookings/orders online.
+// Defaults to "in_store" everywhere it's read (matches the schema default).
+export const REDEEM_WHERE_OPTIONS = [
+  { value: "in_store", label: "In person only" },
+  { value: "online", label: "Online only" },
+  { value: "both", label: "In person or online" },
+] as const;
+
+export type RedeemWhere = (typeof REDEEM_WHERE_OPTIONS)[number]["value"];

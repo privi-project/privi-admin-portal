@@ -542,3 +542,15 @@ alter table public.business_locations add column if not exists opening_hours jso
 -- blanket business-wide value — see app/src/services/businesses.ts.
 alter table public.businesses drop column if exists is_accessible;
 alter table public.business_locations add column if not exists is_accessible boolean not null default false;
+
+-- Found 2026-08-17: redemption_method (discount_code/barcode) says HOW a
+-- code is presented, but nothing said WHERE it can be used — a business
+-- with a physical location can still take bookings/orders online, and a
+-- member should be able to tell that from the offer without emailing to
+-- ask. Deliberately separate from redemption_method (which the original
+-- spec scoped to exactly 2 system values, see offer-config.ts comment) —
+-- this is a new, distinct axis, not an extension of that one. Defaults to
+-- 'in_store' so every existing offer keeps behaving exactly as it does
+-- today (in-person redemption, as the App has always assumed).
+alter table public.offers add column if not exists redeem_where text not null default 'in_store'
+  check (redeem_where in ('in_store', 'online', 'both'));

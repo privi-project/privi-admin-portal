@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminSession } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
 import { isRequired } from "@/lib/validation";
-import { OFFER_TYPES, REDEMPTION_METHODS } from "@/lib/offer-config";
+import { OFFER_TYPES, REDEMPTION_METHODS, REDEEM_WHERE_OPTIONS } from "@/lib/offer-config";
 import { createAutoDraftNotification } from "@/lib/notifications/auto-draft";
 
 export type OfferFormState = { error?: string } | undefined;
@@ -23,6 +23,7 @@ function readOfferFields(formData: FormData) {
     availability: String(formData.get("availability") ?? "").trim() || null,
     redemption_method: String(formData.get("redemption_method") ?? ""),
     redemption_value: String(formData.get("redemption_value") ?? "").trim() || null,
+    redeem_where: String(formData.get("redeem_where") ?? "in_store"),
     location_scope: String(formData.get("location_scope") ?? "all"),
     start_date: String(formData.get("start_date") ?? "").trim() || null,
     expiry_date: String(formData.get("expiry_date") ?? "").trim() || null,
@@ -38,6 +39,11 @@ function validateOfferFields(fields: ReturnType<typeof readOfferFields>): string
   const validRedemptionMethods = REDEMPTION_METHODS.map((m) => m.value) as string[];
   if (!validRedemptionMethods.includes(fields.redemption_method)) {
     return "Select a valid redemption method.";
+  }
+
+  const validRedeemWhere = REDEEM_WHERE_OPTIONS.map((o) => o.value) as string[];
+  if (!validRedeemWhere.includes(fields.redeem_where)) {
+    return "Select where the offer can be redeemed.";
   }
 
   if (!LOCATION_SCOPES.includes(fields.location_scope)) return "Invalid location scope.";
@@ -258,7 +264,7 @@ export async function duplicateOfferAction(businessId: string, offerId: string) 
   const { data: original } = await adminClient
     .from("offers")
     .select(
-      "title, description, value_summary, offer_type, terms, availability, redemption_method, redemption_value, location_scope, start_date, expiry_date",
+      "title, description, value_summary, offer_type, terms, availability, redemption_method, redemption_value, redeem_where, location_scope, start_date, expiry_date",
     )
     .eq("id", offerId)
     .maybeSingle();

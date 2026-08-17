@@ -11,6 +11,7 @@ export type Offer = {
   availability: string | null;
   redemption_method: string;
   redemption_value: string | null;
+  redeem_where: string;
   location_scope: string;
   start_date: string | null;
   expiry_date: string | null;
