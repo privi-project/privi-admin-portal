@@ -12,6 +12,8 @@ export default async function MembersPage({
     plan?: string;
     complimentary?: string;
     suspended?: string;
+    from?: string;
+    to?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -21,6 +23,8 @@ export default async function MembersPage({
     plan: params.plan,
     complimentary: params.complimentary === "on",
     suspended: params.suspended === "on",
+    from: params.from,
+    to: params.to ? `${params.to}T23:59:59.999Z` : undefined,
   });
 
   const exportQuery = new URLSearchParams(
@@ -99,6 +103,26 @@ export default async function MembersPage({
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="suspended" defaultChecked={params.suspended === "on"} />
           Suspended only
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Joined from
+          <input
+            type="date"
+            name="from"
+            defaultValue={params.from ?? ""}
+            className="rounded-lg border border-border-hairline px-3 py-2"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Joined to
+          <input
+            type="date"
+            name="to"
+            defaultValue={params.to ?? ""}
+            className="rounded-lg border border-border-hairline px-3 py-2"
+          />
         </label>
 
         <button

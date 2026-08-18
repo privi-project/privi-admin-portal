@@ -13,12 +13,17 @@ export async function GET(request: NextRequest) {
   await requireAdminSession();
 
   const { searchParams } = new URL(request.url);
+  const toParam = searchParams.get("to");
   const members = await listMembers({
     q: searchParams.get("q") ?? undefined,
     status: searchParams.get("status") ?? undefined,
     plan: searchParams.get("plan") ?? undefined,
     complimentary: searchParams.get("complimentary") === "on",
     suspended: searchParams.get("suspended") === "on",
+    from: searchParams.get("from") ?? undefined,
+    // Pushed to end-of-day so "to" is inclusive of the whole day picked,
+    // not cut off at midnight — same reasoning as the Featured export.
+    to: toParam ? `${toParam}T23:59:59.999Z` : undefined,
   });
 
   const headers = [

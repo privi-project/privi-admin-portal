@@ -26,6 +26,11 @@ export type MemberListFilters = {
   plan?: string;
   complimentary?: boolean;
   suspended?: boolean;
+  // Filters on created_at (when they joined) — for monthly-style
+  // reporting exports. Doesn't change the live member list itself, only
+  // ever passed from the export route.
+  from?: string;
+  to?: string;
 };
 
 // Known v1 limitation: fetches up to 1000 auth.users in one call rather
@@ -99,6 +104,12 @@ export async function listMembers(filters: MemberListFilters = {}): Promise<Memb
   }
   if (filters.suspended) {
     members = members.filter((m) => m.is_suspended);
+  }
+  if (filters.from) {
+    members = members.filter((m) => m.created_at >= filters.from!);
+  }
+  if (filters.to) {
+    members = members.filter((m) => m.created_at <= filters.to!);
   }
 
   return members.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
