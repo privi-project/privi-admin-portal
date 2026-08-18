@@ -186,6 +186,33 @@ export async function countActiveFeaturedInCategory(
   return { count: featured.length, names: featured.map((b) => b.name) };
 }
 
+/**
+ * Active-featured count for every category in one pass, rather than one
+ * query per category — used by the Featured page's "by category"
+ * breakdown so the founder can see at a glance which categories are
+ * near/at their cap without opening each one individually.
+ */
+export async function getFeaturedCountsByCategory(): Promise<Record<string, number>> {
+  const adminClient = createAdminClient();
+  if (!adminClient) return {};
+
+  const { data } = await adminClient
+    .from("business_categories")
+    .select("category_id, business:businesses(featured_level, featured_expires_at)");
+
+  type Row = {
+    category_id: string;
+    business: Pick<Business, "featured_level" | "featured_expires_at"> | null;
+  };
+
+  const counts: Record<string, number> = {};
+  for (const row of (data as unknown as Row[]) ?? []) {
+    if (!row.business || effectiveFeaturedLevel(row.business) === "none") continue;
+    counts[row.category_id] = (counts[row.category_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 export async function getBusinessCategoryIds(businessId: string): Promise<string[]> {
   const adminClient = createAdminClient();
   if (!adminClient) return [];

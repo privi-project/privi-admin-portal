@@ -1,5 +1,10 @@
 import { NavLink } from "@/components/nav-link";
-import { listFeaturedBusinesses, effectiveFeaturedLevel } from "@/lib/businesses/queries";
+import {
+  listFeaturedBusinesses,
+  effectiveFeaturedLevel,
+  getFeaturedCountsByCategory,
+} from "@/lib/businesses/queries";
+import { listCategories } from "@/lib/categories/queries";
 import { GLOBAL_FEATURED_CAP, CATEGORY_FEATURED_CAP } from "@/lib/featured-config";
 
 function formatDate(iso: string): string {
@@ -11,7 +16,11 @@ function daysUntil(iso: string): number {
 }
 
 export default async function FeaturedPage() {
-  const businesses = await listFeaturedBusinesses();
+  const [businesses, categories, countsByCategory] = await Promise.all([
+    listFeaturedBusinesses(),
+    listCategories(),
+    getFeaturedCountsByCategory(),
+  ]);
 
   const active = businesses.filter((b) => effectiveFeaturedLevel(b) !== "none");
   const lapsed = businesses.filter((b) => effectiveFeaturedLevel(b) === "none");
@@ -44,12 +53,41 @@ export default async function FeaturedPage() {
           <p className="mt-1 text-lg font-medium">{activeCategoryCount}</p>
         </div>
       </div>
-      <p className="mt-2 text-xs text-muted-dark">
+      <h2 className="mt-8 text-sm font-medium text-muted-dark">By category</h2>
+      <p className="mt-1 text-xs text-muted-dark">
         Each category holds up to {CATEGORY_FEATURED_CAP} featured spots,
-        shared by category- and homepage-tier businesses that belong to it
-        — checked per-category when you set a business as featured, not
-        shown as a single number here.
+        shared by category- and homepage-tier businesses that belong to it.
       </p>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        {categories.map((category) => {
+          const count = countsByCategory[category.id] ?? 0;
+          const isFull = count >= CATEGORY_FEATURED_CAP;
+          return (
+            <div
+              key={category.id}
+              className={`rounded-xl border p-3 ${
+                isFull ? "border-gold bg-note-bg" : "border-border-hairline bg-white"
+              }`}
+            >
+              <p className="truncate text-sm font-medium">{category.label}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex gap-1">
+                  {Array.from({ length: CATEGORY_FEATURED_CAP }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-2 w-4 rounded-full ${i < count ? "privi-gold-fill" : "bg-border-hairline-2"}`}
+                    />
+                  ))}
+                </div>
+                <span className={`text-xs ${isFull ? "privi-gold-text font-medium" : "text-muted-dark"}`}>
+                  {count} / {CATEGORY_FEATURED_CAP}
+                  {isFull ? " full" : ""}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       <h2 className="mt-8 text-sm font-medium text-muted-dark">Active</h2>
       <div className="mt-3 divide-y divide-border-hairline rounded-2xl border border-border-hairline bg-white">
