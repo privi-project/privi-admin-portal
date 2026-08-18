@@ -1,5 +1,9 @@
 import { NavLink } from "@/components/nav-link";
-import { getSubscriptionOverview, getSubscriptionPeriodReport } from "@/lib/subscriptions/queries";
+import {
+  getSubscriptionOverview,
+  getSubscriptionPeriodReport,
+  getAllTimeRevenueCollected,
+} from "@/lib/subscriptions/queries";
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
@@ -16,7 +20,10 @@ export default async function SubscriptionsPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   const params = await searchParams;
-  const overview = await getSubscriptionOverview();
+  const [overview, totalRevenueCollectedGbp] = await Promise.all([
+    getSubscriptionOverview(),
+    getAllTimeRevenueCollected(),
+  ]);
 
   const hasRange = !!(params.from && params.to);
   const periodReport = hasRange
@@ -32,8 +39,9 @@ export default async function SubscriptionsPage({
         <StatTile label="Past due (failed payments)" value={String(overview.pastDueCount)} />
         <StatTile label="Cancelled" value={String(overview.cancelledCount)} />
         <StatTile label="Complimentary" value={String(overview.complimentaryCount)} />
-        <StatTile label="MRR" value={`£${overview.mrr.toFixed(2)}`} />
-        <StatTile label="ARR" value={`£${overview.arr.toFixed(2)}`} />
+        <StatTile label="MRR (monthly members)" value={`£${overview.monthlyMrr.toFixed(2)}`} />
+        <StatTile label="ARR (annual members)" value={`£${overview.annualRevenueGbp.toFixed(2)}`} />
+        <StatTile label="Total revenue (all time)" value={`£${totalRevenueCollectedGbp.toFixed(2)}`} />
         <StatTile
           label="Cancellation rate"
           value={`${(overview.cancellationRate * 100).toFixed(1)}%`}
@@ -48,7 +56,13 @@ export default async function SubscriptionsPage({
         expired — there&apos;s no separate &quot;expired&quot; state in the
         actual subscription data, so it&apos;s folded in here. Cancellation
         rate is a current snapshot, not a time-windowed rate — no historical
-        subscription-event log exists to compute one properly.
+        subscription-event log exists to compute one properly. MRR and ARR
+        are kept separate deliberately — MRR is real monthly-plan revenue,
+        ARR here is real annual-plan revenue already collected (not the
+        usual SaaS convention of MRR x 12, which would blend a real number
+        with an unearned 12-month projection). Total revenue is the one
+        genuinely cumulative figure — every payment ever actually
+        collected, from real Stripe invoices, not an estimate.
       </p>
 
       <h2 className="mt-8 text-sm font-medium text-muted-dark">Report for a date range</h2>

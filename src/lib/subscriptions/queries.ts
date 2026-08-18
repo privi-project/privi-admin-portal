@@ -2,17 +2,24 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripeServerClient } from "@/lib/stripe-server";
 
 /**
- * Real MRR pulled directly from every active Stripe subscription's actual
- * price, not a fixed-price-times-count estimate. Fixed 2026-08-19 — the
- * previous version hardcoded the published price and would have silently
- * gone stale the moment pricing changed, a discount/coupon applied, or a
- * subscription had a different price than the current published one for
- * any reason. Paginates properly rather than assuming everything fits in
- * one page — correct now at zero real subscribers, still correct once
- * that's no longer true.
+ * Deliberately kept SEPARATE, not combined into one "ARR" figure. Fixed
+ * 2026-08-19 — founder correctly flagged that MRR x 12 blends two
+ * fundamentally different kinds of number: monthlyMrr is a real, currently-
+ * recurring amount, while annualRevenueGbp is money Stripe has ALREADY
+ * collected upfront from active annual subscribers (Stripe charges the
+ * full year in one go at the start of the billing cycle, not spread out).
+ * A single "ARR" combining them looks like one fact when it's actually a
+ * real number plus a 12-month projection for monthly members that assumes
+ * zero cancellations — exactly the "inflates the numbers" problem. Shown
+ * as two honest figures instead of one misleading one. Paginates properly
+ * rather than assuming everything fits in one page — correct now at zero
+ * real subscribers, still correct once that's no longer true.
  */
-async function computeRealMrr(stripe: NonNullable<ReturnType<typeof getStripeServerClient>>): Promise<number> {
-  let mrr = 0;
+async function computeRealRevenue(
+  stripe: NonNullable<ReturnType<typeof getStripeServerClient>>,
+): Promise<{ monthlyMrr: number; annualRevenueGbp: number }> {
+  let monthlyMrr = 0;
+  let annualRevenueGbp = 0;
   let startingAfter: string | undefined;
   let hasMore = true;
 
@@ -28,12 +35,12 @@ async function computeRealMrr(stripe: NonNullable<ReturnType<typeof getStripeSer
         const unitAmount = (item.price.unit_amount ?? 0) / 100;
         const quantity = item.quantity ?? 1;
         const interval = item.price.recurring?.interval;
-        const intervalCount = item.price.recurring?.interval_count ?? 1;
-        const monthlyEquivalent =
-          interval === "year"
-            ? (unitAmount * quantity) / (12 * intervalCount)
-            : (unitAmount * quantity) / intervalCount;
-        mrr += monthlyEquivalent;
+        const total = unitAmount * quantity;
+        if (interval === "year") {
+          annualRevenueGbp += total;
+        } else {
+          monthlyMrr += total;
+        }
       }
     }
 
@@ -41,7 +48,7 @@ async function computeRealMrr(stripe: NonNullable<ReturnType<typeof getStripeSer
     startingAfter = page.data[page.data.length - 1]?.id;
   }
 
-  return mrr;
+  return { monthlyMrr, annualRevenueGbp };
 }
 
 export type SubscriptionOverview = {
@@ -49,8 +56,8 @@ export type SubscriptionOverview = {
   pastDueCount: number;
   cancelledCount: number;
   complimentaryCount: number;
-  mrr: number;
-  arr: number;
+  monthlyMrr: number;
+  annualRevenueGbp: number;
   cancellationRate: number;
   refundCount: number;
   refundTotalGbp: number;
@@ -65,8 +72,8 @@ export async function getSubscriptionOverview(): Promise<SubscriptionOverview> {
       pastDueCount: 0,
       cancelledCount: 0,
       complimentaryCount: 0,
-      mrr: 0,
-      arr: 0,
+      monthlyMrr: 0,
+      annualRevenueGbp: 0,
       cancellationRate: 0,
       refundCount: 0,
       refundTotalGbp: 0,
@@ -102,31 +109,59 @@ export async function getSubscriptionOverview(): Promise<SubscriptionOverview> {
 
   let refundCount = 0;
   let refundTotalGbp = 0;
-  let mrr = 0;
+  let monthlyMrr = 0;
+  let annualRevenueGbp = 0;
   const stripe = getStripeServerClient();
   if (stripe) {
-    const [refunds, realMrr] = await Promise.all([
+    const [refunds, realRevenue] = await Promise.all([
       stripe.refunds.list({ limit: 100 }),
-      computeRealMrr(stripe),
+      computeRealRevenue(stripe),
     ]);
     refundCount = refunds.data.length;
     refundTotalGbp = refunds.data.reduce((sum, r) => sum + r.amount, 0) / 100;
-    mrr = realMrr;
+    monthlyMrr = realRevenue.monthlyMrr;
+    annualRevenueGbp = realRevenue.annualRevenueGbp;
   }
-  const arr = mrr * 12;
 
   return {
     activeCount,
     pastDueCount,
     cancelledCount,
     complimentaryCount,
-    mrr,
-    arr,
+    monthlyMrr,
+    annualRevenueGbp,
     cancellationRate,
     refundCount,
     refundTotalGbp,
     pastDueMembers,
   };
+}
+
+/**
+ * The honest "just the actual" total the founder asked for after seeing
+ * MRR x 12 — real money Stripe has actually collected, all time, from
+ * paid invoices. Naturally blends monthly and annual charges into one
+ * number with zero projection involved, because it's built from events
+ * that already happened, not a rate multiplied forward. Reuses the same
+ * getSubscriptionPeriodReport mechanism as the date-range report, just
+ * with no from/to bound.
+ */
+export async function getAllTimeRevenueCollected(): Promise<number> {
+  const stripe = getStripeServerClient();
+  if (!stripe) return 0;
+
+  let total = 0;
+  let startingAfter: string | undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const page = await stripe.invoices.list({ status: "paid", limit: 100, starting_after: startingAfter });
+    total += page.data.reduce((sum, inv) => sum + inv.amount_paid, 0);
+    hasMore = page.has_more;
+    startingAfter = page.data[page.data.length - 1]?.id;
+  }
+
+  return total / 100;
 }
 
 export type SubscriptionPeriodReport = {

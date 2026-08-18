@@ -138,8 +138,21 @@ export default async function DashboardPage({
 
         <p className="mt-6 text-xs font-medium uppercase tracking-wide text-muted-dark">Revenue</p>
         <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatTile label="MRR" value={`£${summary.mrr.toFixed(2)}`} href="/subscriptions" />
-          <StatTile label="ARR" value={`£${summary.arr.toFixed(2)}`} href="/subscriptions" />
+          <StatTile
+            label="MRR (monthly members)"
+            value={`£${summary.monthlyMrr.toFixed(2)}`}
+            href="/subscriptions"
+          />
+          <StatTile
+            label="ARR (annual members)"
+            value={`£${summary.annualRevenueGbp.toFixed(2)}`}
+            href="/subscriptions"
+          />
+          <StatTile
+            label="Total revenue (all time)"
+            value={`£${summary.totalRevenueCollectedGbp.toFixed(2)}`}
+            href="/subscriptions"
+          />
           <StatTile
             label="Featured earnings (all time)"
             value={`£${summary.featured.earningsAllTimeGbp.toFixed(2)}`}
@@ -168,10 +181,15 @@ export default async function DashboardPage({
         </div>
 
         <p className="mt-4 text-xs text-muted-dark">
-          &quot;Cancelled&quot; and MRR/ARR are current snapshots, not
-          period-windowed — no historical subscription-event log exists to
-          compute a period-based cancellation count (same limitation noted
-          on the Subscriptions page). Offer tiles aren&apos;t clickable —
+          &quot;Cancelled&quot;, MRR and ARR are current snapshots (real
+          Stripe amounts, monthly-plan and annual-plan revenue kept
+          separate rather than combined into one projected figure — see
+          the Subscriptions page for why). Total revenue is the one
+          cumulative, non-snapshot figure here — every payment ever
+          actually collected. No historical subscription-event log exists
+          to compute a period-based cancellation count (same limitation
+          noted on the Subscriptions page). Offer tiles aren&apos;t
+          clickable —
           there&apos;s no single cross-business offers list to link to yet
           (offers currently only live nested under each business); the
           Action Centre below covers the drill-down cases that matter most

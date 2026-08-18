@@ -2,7 +2,7 @@ import { listMembers } from "@/lib/members/queries";
 import { listBusinesses, effectiveFeaturedLevel } from "@/lib/businesses/queries";
 import { listFeaturedHistory } from "@/lib/featured/queries";
 import { listAllOffers, effectiveStatus, type OfferWithBusinessName } from "@/lib/offers/queries";
-import { getSubscriptionOverview } from "@/lib/subscriptions/queries";
+import { getSubscriptionOverview, getAllTimeRevenueCollected } from "@/lib/subscriptions/queries";
 import { getSystemSettings } from "@/lib/system-settings/queries";
 import { listActivity, type ActivityLogRow } from "@/lib/activity/queries";
 
@@ -18,8 +18,9 @@ export type DashboardSummary = {
   businesses: { active: number; inactive: number };
   offers: { active: number; scheduled: number; expired: number };
   featured: { active: number; earningsAllTimeGbp: number };
-  mrr: number;
-  arr: number;
+  monthlyMrr: number;
+  annualRevenueGbp: number;
+  totalRevenueCollectedGbp: number;
   actionCentre: {
     expiringOffers: OfferWithBusinessName[];
     expiredOffers: OfferWithBusinessName[];
@@ -33,16 +34,25 @@ export type DashboardSummary = {
 };
 
 export async function getDashboardSummary(periodDays: number): Promise<DashboardSummary> {
-  const [members, businesses, offers, subscriptionOverview, systemSettings, recentActivity, featuredHistory] =
-    await Promise.all([
-      listMembers(),
-      listBusinesses(),
-      listAllOffers(),
-      getSubscriptionOverview(),
-      getSystemSettings(),
-      listActivity({ limit: 10 }),
-      listFeaturedHistory(),
-    ]);
+  const [
+    members,
+    businesses,
+    offers,
+    subscriptionOverview,
+    systemSettings,
+    recentActivity,
+    featuredHistory,
+    totalRevenueCollectedGbp,
+  ] = await Promise.all([
+    listMembers(),
+    listBusinesses(),
+    listAllOffers(),
+    getSubscriptionOverview(),
+    getSystemSettings(),
+    listActivity({ limit: 10 }),
+    listFeaturedHistory(),
+    getAllTimeRevenueCollected(),
+  ]);
 
   const periodStart = new Date();
   periodStart.setDate(periodStart.getDate() - periodDays);
@@ -114,8 +124,9 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
     businesses: businessSummary,
     offers: offerSummary,
     featured: featuredSummary,
-    mrr: subscriptionOverview.mrr,
-    arr: subscriptionOverview.arr,
+    monthlyMrr: subscriptionOverview.monthlyMrr,
+    annualRevenueGbp: subscriptionOverview.annualRevenueGbp,
+    totalRevenueCollectedGbp,
     actionCentre: {
       expiringOffers,
       expiredOffers,
