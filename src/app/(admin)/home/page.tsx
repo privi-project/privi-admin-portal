@@ -102,7 +102,8 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-dark">Members</p>
+        <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatTile
             label="Active members"
             value={String(summary.members.active)}
@@ -133,8 +134,23 @@ export default async function DashboardPage({
             value={String(summary.members.newInPeriod)}
             href="/members"
           />
+        </div>
+
+        <p className="mt-6 text-xs font-medium uppercase tracking-wide text-muted-dark">Revenue</p>
+        <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatTile label="MRR" value={`£${summary.mrr.toFixed(2)}`} href="/subscriptions" />
           <StatTile label="ARR" value={`£${summary.arr.toFixed(2)}`} href="/subscriptions" />
+          <StatTile
+            label="Featured earnings (all time)"
+            value={`£${summary.featured.earningsAllTimeGbp.toFixed(2)}`}
+            href="/featured"
+          />
+        </div>
+
+        <p className="mt-6 text-xs font-medium uppercase tracking-wide text-muted-dark">
+          Businesses &amp; offers
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatTile
             label="Active businesses"
             value={String(summary.businesses.active)}
@@ -150,7 +166,8 @@ export default async function DashboardPage({
           <StatTile label="Expired offers" value={String(summary.offers.expired)} />
           <StatTile label="Featured (active)" value={String(summary.featured.active)} href="/featured" />
         </div>
-        <p className="mt-2 text-xs text-muted-dark">
+
+        <p className="mt-4 text-xs text-muted-dark">
           &quot;Cancelled&quot; and MRR/ARR are current snapshots, not
           period-windowed — no historical subscription-event log exists to
           compute a period-based cancellation count (same limitation noted

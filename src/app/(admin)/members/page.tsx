@@ -159,6 +159,9 @@ export default async function MembersPage({
               </p>
               <p className="truncate text-xs text-muted-dark">
                 {member.email} {member.email_confirmed ? "🟢" : "🟡"}
+                {member.subscription_plan && (
+                  <> · {member.subscription_plan === "annual" ? "Annual" : "Monthly"}</>
+                )}
               </p>
             </div>
 

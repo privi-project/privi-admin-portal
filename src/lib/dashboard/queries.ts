@@ -1,5 +1,6 @@
 import { listMembers } from "@/lib/members/queries";
 import { listBusinesses, effectiveFeaturedLevel } from "@/lib/businesses/queries";
+import { listFeaturedHistory } from "@/lib/featured/queries";
 import { listAllOffers, effectiveStatus, type OfferWithBusinessName } from "@/lib/offers/queries";
 import { getSubscriptionOverview } from "@/lib/subscriptions/queries";
 import { getSystemSettings } from "@/lib/system-settings/queries";
@@ -16,7 +17,7 @@ export type DashboardSummary = {
   };
   businesses: { active: number; inactive: number };
   offers: { active: number; scheduled: number; expired: number };
-  featured: { active: number };
+  featured: { active: number; earningsAllTimeGbp: number };
   mrr: number;
   arr: number;
   actionCentre: {
@@ -32,7 +33,7 @@ export type DashboardSummary = {
 };
 
 export async function getDashboardSummary(periodDays: number): Promise<DashboardSummary> {
-  const [members, businesses, offers, subscriptionOverview, systemSettings, recentActivity] =
+  const [members, businesses, offers, subscriptionOverview, systemSettings, recentActivity, featuredHistory] =
     await Promise.all([
       listMembers(),
       listBusinesses(),
@@ -40,6 +41,7 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
       getSubscriptionOverview(),
       getSystemSettings(),
       listActivity({ limit: 10 }),
+      listFeaturedHistory(),
     ]);
 
   const periodStart = new Date();
@@ -85,6 +87,7 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
   const featuredBusinesses = businesses.filter((b) => b.featured_level !== "none");
   const featuredSummary = {
     active: featuredBusinesses.filter((b) => effectiveFeaturedLevel(b) !== "none").length,
+    earningsAllTimeGbp: featuredHistory.reduce((sum, h) => sum + (h.amount_charged ?? 0), 0),
   };
   const featuredExpiringSoon = featuredBusinesses
     .filter(

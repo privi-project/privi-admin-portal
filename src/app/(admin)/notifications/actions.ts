@@ -356,3 +356,49 @@ export async function deleteNotificationAction(id: string, title: string) {
   revalidatePath("/notifications");
   redirect("/notifications");
 }
+
+/**
+ * Bulk version of the above, for clearing out a pile of test/unwanted
+ * drafts at once instead of opening and deleting each individually.
+ * Called directly from a client component (not a plain form action), so
+ * it returns the deleted count rather than redirecting. Same rule as the
+ * single-delete action: only ever hard-deletes drafts, silently skips
+ * anything else even if a non-draft id somehow got through.
+ */
+export async function bulkDeleteNotificationsAction(ids: string[]): Promise<{ deletedCount: number }> {
+  const session = await requireAdminSession();
+  if (ids.length === 0) return { deletedCount: 0 };
+
+  const adminClient = createAdminClient();
+  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
+
+  const { data: rows } = await adminClient
+    .from("notifications")
+    .select("id, title, status")
+    .in("id", ids);
+
+  const draftRows = (rows ?? []).filter((r) => r.status === "draft");
+  if (draftRows.length === 0) return { deletedCount: 0 };
+
+  await adminClient
+    .from("notifications")
+    .delete()
+    .in(
+      "id",
+      draftRows.map((r) => r.id),
+    );
+
+  for (const row of draftRows) {
+    await logActivity({
+      adminId: session.userId,
+      adminEmail: session.email,
+      action: "deleted",
+      entityType: "notification",
+      entityId: row.id,
+      entityLabel: row.title,
+    });
+  }
+
+  revalidatePath("/notifications");
+  return { deletedCount: draftRows.length };
+}

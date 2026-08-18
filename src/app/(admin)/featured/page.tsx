@@ -5,7 +5,10 @@ import {
   getFeaturedCountsByCategory,
 } from "@/lib/businesses/queries";
 import { listCategories } from "@/lib/categories/queries";
+import { listFeaturedHistory } from "@/lib/featured/queries";
 import { GLOBAL_FEATURED_CAP, CATEGORY_FEATURED_CAP } from "@/lib/featured-config";
+
+const EARNINGS_PERIODS = [7, 30, 90] as const;
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -15,12 +18,29 @@ function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 }
 
-export default async function FeaturedPage() {
-  const [businesses, categories, countsByCategory] = await Promise.all([
+export default async function FeaturedPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ earnings?: string }>;
+}) {
+  const params = await searchParams;
+  const earningsPeriod =
+    params.earnings && EARNINGS_PERIODS.includes(Number(params.earnings) as (typeof EARNINGS_PERIODS)[number])
+      ? Number(params.earnings)
+      : null; // null = all time (default)
+
+  const earningsFrom = earningsPeriod
+    ? new Date(Date.now() - earningsPeriod * 24 * 60 * 60 * 1000).toISOString()
+    : undefined;
+
+  const [businesses, categories, countsByCategory, earningsHistory] = await Promise.all([
     listFeaturedBusinesses(),
     listCategories(),
     getFeaturedCountsByCategory(),
+    listFeaturedHistory({ from: earningsFrom }),
   ]);
+
+  const totalEarnings = earningsHistory.reduce((sum, h) => sum + (h.amount_charged ?? 0), 0);
 
   const active = businesses.filter((b) => effectiveFeaturedLevel(b) !== "none");
   const lapsed = businesses.filter((b) => effectiveFeaturedLevel(b) === "none");
@@ -37,6 +57,40 @@ export default async function FeaturedPage() {
         lapsed but hasn&apos;t been cleared yet. Set or renew a business&apos;s
         featured placement from its own edit page.
       </p>
+
+      <div className="mt-4 flex items-center justify-between rounded-2xl border border-border-hairline bg-white p-4">
+        <div>
+          <p className="text-xs text-muted-dark">
+            {earningsPeriod ? `Earnings (last ${earningsPeriod}d)` : "Earnings (all time)"}
+          </p>
+          <p className="mt-1 text-2xl font-medium">£{totalEarnings.toFixed(2)}</p>
+        </div>
+        <div className="flex items-center gap-1 text-xs">
+          <NavLink
+            href="/featured"
+            className={`rounded-lg border px-2 py-1 ${
+              earningsPeriod === null
+                ? "border-teal bg-teal text-ivory"
+                : "border-border-hairline text-muted-dark"
+            }`}
+          >
+            All time
+          </NavLink>
+          {EARNINGS_PERIODS.map((opt) => (
+            <NavLink
+              key={opt}
+              href={`/featured?earnings=${opt}`}
+              className={`rounded-lg border px-2 py-1 ${
+                earningsPeriod === opt
+                  ? "border-teal bg-teal text-ivory"
+                  : "border-border-hairline text-muted-dark"
+              }`}
+            >
+              {opt}d
+            </NavLink>
+          ))}
+        </div>
+      </div>
 
       <form
         action="/featured/export.csv"
