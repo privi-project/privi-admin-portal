@@ -34,6 +34,9 @@ export const STATUS_TONE: Record<
   // Notification-specific
   sent: "success",
   failed: "danger",
+  // Featured payment tracking-specific
+  paid: "success",
+  unpaid: "warning",
 };
 
 export function toneForStatus(status: string) {

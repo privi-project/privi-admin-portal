@@ -6,6 +6,7 @@ import {
 } from "@/lib/businesses/queries";
 import { listCategories } from "@/lib/categories/queries";
 import { listFeaturedHistory } from "@/lib/featured/queries";
+import { countUnpaidFeaturedPayments } from "@/lib/featured/payment-queries";
 import { GLOBAL_FEATURED_CAP, CATEGORY_FEATURED_CAP } from "@/lib/featured-config";
 
 const EARNINGS_PERIODS = [7, 30, 90] as const;
@@ -33,11 +34,12 @@ export default async function FeaturedPage({
     ? new Date(Date.now() - earningsPeriod * 24 * 60 * 60 * 1000).toISOString()
     : undefined;
 
-  const [businesses, categories, countsByCategory, earningsHistory] = await Promise.all([
+  const [businesses, categories, countsByCategory, earningsHistory, unpaidCount] = await Promise.all([
     listFeaturedBusinesses(),
     listCategories(),
     getFeaturedCountsByCategory(),
     listFeaturedHistory({ from: earningsFrom }),
+    countUnpaidFeaturedPayments(),
   ]);
 
   const totalEarnings = earningsHistory.reduce((sum, h) => sum + (h.amount_charged ?? 0), 0);
@@ -49,9 +51,19 @@ export default async function FeaturedPage({
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-medium">Featured placement</h1>
-      </div>
+      <NavLink
+        href="/featured/payments"
+        className="inline-flex items-center gap-2 rounded-lg privi-gold-border border bg-teal px-4 py-2 text-sm font-medium text-ivory [--gold-border-bg:var(--color-teal)]"
+      >
+        Track payments
+        {unpaidCount > 0 && (
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-ivory px-1.5 text-xs font-semibold text-teal">
+            {unpaidCount}
+          </span>
+        )}
+      </NavLink>
+
+      <h1 className="mt-4 text-lg font-medium">Featured placement</h1>
       <p className="mt-1 text-sm text-muted-dark">
         Every business currently on a featured term, and any whose term has
         lapsed but hasn&apos;t been cleared yet. Set or renew a business&apos;s

@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminSession } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
-import { FEATURED_DURATIONS, GLOBAL_FEATURED_CAP, CATEGORY_FEATURED_CAP } from "@/lib/featured-config";
-import { listActiveGlobalFeatured, countActiveFeaturedInCategory, getBusinessCategories } from "@/lib/businesses/queries";
+import { FEATURED_DURATIONS } from "@/lib/featured-config";
+import { activateFeaturedPlacement } from "@/lib/featured/activate";
 
 export type FeaturedActionState = { error?: string } | undefined;
 
@@ -42,69 +42,17 @@ export async function setFeaturedAction(
     return { error: "Enter the amount actually charged for this term." };
   }
 
-  if (tier === "global") {
-    const activeGlobal = await listActiveGlobalFeatured(businessId);
-    if (activeGlobal.length >= GLOBAL_FEATURED_CAP) {
-      const names = activeGlobal.map((b) => b.name).join(", ");
-      return {
-        error: `All ${GLOBAL_FEATURED_CAP} sitewide slots are in use (${names}). Clear one before adding another, or feature this business in its category instead.`,
-      };
-    }
-  }
-
-  // Both tiers occupy a category's slots (global boosts category views
-  // too) — check every category this business belongs to, whichever tier
-  // is being set.
-  const categories = await getBusinessCategories(businessId);
-  for (const category of categories) {
-    const { count, names } = await countActiveFeaturedInCategory(category.id, businessId);
-    if (count >= CATEGORY_FEATURED_CAP) {
-      return {
-        error: `"${category.label}" already has all ${CATEGORY_FEATURED_CAP} featured spots taken (${names.join(", ")}). Clear one there first.`,
-      };
-    }
-  }
-
-  const adminClient = createAdminClient();
-  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
-
-  const now = new Date();
-  const expires = new Date(now);
-  expires.setMonth(expires.getMonth() + Number(duration));
-
-  const { error } = await adminClient
-    .from("businesses")
-    .update({
-      featured_level: tier,
-      featured_at: now.toISOString(),
-      featured_expires_at: expires.toISOString(),
-      updated_at: now.toISOString(),
-    })
-    .eq("id", businessId);
-
-  if (error) return { error: error.message };
-
-  // Permanent ledger entry — independent of the businesses row above, so
-  // clearing/lapsing later never loses this record. See schema.sql's
-  // featured_history comment for why this exists as its own table.
-  await adminClient.from("featured_history").insert({
-    business_id: businessId,
-    featured_level: tier,
-    duration_months: Number(duration),
-    amount_charged: amount,
-    started_at: now.toISOString(),
-    expires_at: expires.toISOString(),
-    created_by: session.userId,
-  });
-
-  await logActivity({
+  const result = await activateFeaturedPlacement({
+    businessId,
+    businessName,
+    tier: tier as "category" | "global",
+    durationMonths: Number(duration),
+    amountCharged: amount,
     adminId: session.userId,
     adminEmail: session.email,
-    action: "updated",
-    entityType: "business",
-    entityId: businessId,
-    entityLabel: `${businessName} — featured (${tier}, ${duration}mo, £${amount.toFixed(2)})`,
   });
+
+  if (result.error) return result;
 
   revalidatePath("/featured");
   revalidatePath(`/businesses/${businessId}/edit`);

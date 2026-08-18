@@ -593,3 +593,115 @@ alter table public.featured_history enable row level security;
 -- admin_users/admin_activity_log/system_settings/notifications.
 
 create index if not exists featured_history_business_idx on public.featured_history (business_id);
+
+-- Business Applications (2026-08-19) — a restricted-field alternative to
+-- an open "contact us" box, so businesses can approach Privi directly
+-- without it becoming a support/complaints inbox. The public website
+-- form (not built yet) will insert here; this schema + the Admin
+-- Portal's tracking board are built first. Pipeline stages are
+-- deliberately just labels on a text column, not a rigid state machine —
+-- easy to rename/reorder later without a migration.
+create table if not exists public.business_applications (
+  id uuid primary key default gen_random_uuid(),
+  business_name text not null,
+  category_id uuid references public.categories(id) on delete set null,
+  location_type text not null default 'single'
+    check (location_type in ('single', 'multi')),
+  contact_name text not null,
+  contact_email text not null,
+  contact_phone text,
+  message text,
+  status text not null default 'new'
+    check (status in ('new', 'reviewing', 'contacted', 'signed_up', 'declined')),
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.business_applications enable row level security;
+
+-- Public can INSERT (the eventual website form submits without being
+-- logged in) but never read/update/delete — same shape as offer_locations
+-- style public-write-only tables. Admin Portal reads/writes via the
+-- service_role client, which bypasses RLS entirely, same as everywhere
+-- else in this project.
+create policy "Anyone can submit a business application"
+  on public.business_applications for insert
+  with check (true);
+
+create index if not exists business_applications_status_idx on public.business_applications (status);
+
+-- Business Application Statuses (2026-08-18) — turns the Kanban board's
+-- pipeline columns from a hardcoded list into an admin-editable one,
+-- same pattern as categories (own table, display_order, is_active soft-
+-- remove — never a hard delete of something that might be referenced).
+-- No RLS policies: service_role-only, same as notifications/system_settings
+-- — this is internal board config, nothing public-facing ever reads it.
+create table if not exists public.business_application_statuses (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  label text not null,
+  display_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.business_application_statuses enable row level security;
+
+insert into public.business_application_statuses (slug, label, display_order) values
+  ('new', 'New', 1),
+  ('reviewing', 'Reviewing', 2),
+  ('contacted', 'Contacted', 3),
+  ('signed_up', 'Signed up', 4),
+  ('declined', 'Declined', 5)
+on conflict (slug) do nothing;
+
+-- Swap the fixed check constraint for a real foreign key against the new
+-- table, so status can be any admin-defined slug, not just the original 5.
+alter table public.business_applications
+  drop constraint if exists business_applications_status_check;
+
+alter table public.business_applications
+  add constraint business_applications_status_fkey
+  foreign key (status) references public.business_application_statuses (slug);
+
+-- Featured Payment Tracking (2026-08-18) — a simple "invoiced, waiting to
+-- be paid" tracker for Featured Placement deals. Deliberately separate
+-- from featured_history (the real earnings ledger): that table only ever
+-- records money for a placement actually switched on for a real business,
+-- while this one exists precisely because there's a gap between agreeing
+-- a deal/sending an invoice and the business actually paying. Never rolled
+-- into any revenue total for the same reason MRR/ARR were split earlier
+-- this session — pending and collected money must never blend into one
+-- figure. business_name is free text (not a businesses FK) since a deal
+-- can be invoiced before the business is even a record in this portal.
+create table if not exists public.featured_payment_requests (
+  id uuid primary key default gen_random_uuid(),
+  business_name text not null,
+  -- Optional — set when the business already exists as a real record, so
+  -- "Mark paid" can also activate Featured in one click instead of
+  -- re-entering the same tier/duration/amount a second time on the
+  -- business's own edit page. Null is fine (and expected) when a deal is
+  -- agreed before the business has been added to the portal yet.
+  business_id uuid references public.businesses (id) on delete set null,
+  featured_level text not null
+    check (featured_level in ('category', 'global')),
+  duration_months integer not null
+    check (duration_months in (1, 3)),
+  amount_gbp numeric(10, 2) not null,
+  invoice_number text,
+  status text not null default 'unpaid'
+    check (status in ('unpaid', 'paid')),
+  paid_at timestamptz,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.featured_payment_requests enable row level security;
+-- No policies — service_role-only, same pattern as notifications/
+-- business_application_statuses. Purely internal, nothing public reads it.
+
+create index if not exists featured_payment_requests_status_idx
+  on public.featured_payment_requests (status);

@@ -139,3 +139,62 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
     recentActivity,
   };
 }
+
+/**
+ * Nav-badge count for the Dashboard link, mirroring the "Applications"
+ * badge. Deliberately NOT built on getDashboardSummary() — that pulls
+ * Stripe (MRR, refunds, all-time revenue) and would add a live Stripe
+ * round-trip to every single admin page load via the layout. Everything
+ * the Action Centre actually flags (expiring/expired/scheduled offers,
+ * past-due members, deletion requests, featured expiring/lapsed) is
+ * derivable from Supabase alone — past-due status lives on `profiles`
+ * directly, no Stripe lookup needed for the count. Kept in sync by hand
+ * with the equivalent block in getDashboardSummary() above.
+ */
+export async function getActionCentreCount(): Promise<number> {
+  const [members, businesses, offers, systemSettings] = await Promise.all([
+    listMembers(),
+    listBusinesses(),
+    listAllOffers(),
+    getSystemSettings(),
+  ]);
+
+  const warningDays = systemSettings.default_expiry_warning_days;
+  const warningCutoff = new Date();
+  warningCutoff.setDate(warningCutoff.getDate() + warningDays);
+  const warningCutoffStr = warningCutoff.toISOString().slice(0, 10);
+  const warningCutoffFull = warningCutoff.toISOString();
+
+  const offersWithStatus = offers.map((o) => ({ ...o, effective: effectiveStatus(o) }));
+  const expiringOffersCount = offersWithStatus.filter(
+    (o) => o.effective === "active" && o.expiry_date && o.expiry_date <= warningCutoffStr,
+  ).length;
+  const expiredOffersCount = offersWithStatus.filter((o) => o.effective === "expired").length;
+  const scheduledOffersCount = offersWithStatus.filter(
+    (o) => o.effective === "scheduled" && o.start_date && o.start_date <= warningCutoffStr,
+  ).length;
+
+  const pastDueMembersCount = members.filter((m) => m.subscription_status === "past_due").length;
+  const deletionRequestsCount = members.filter((m) => m.deletion_requested_at).length;
+
+  const featuredBusinesses = businesses.filter((b) => b.featured_level !== "none");
+  const featuredExpiringSoonCount = featuredBusinesses.filter(
+    (b) =>
+      effectiveFeaturedLevel(b) !== "none" &&
+      b.featured_expires_at &&
+      b.featured_expires_at <= warningCutoffFull,
+  ).length;
+  const featuredLapsedCount = featuredBusinesses.filter(
+    (b) => effectiveFeaturedLevel(b) === "none" && b.featured_expires_at,
+  ).length;
+
+  return (
+    expiringOffersCount +
+    expiredOffersCount +
+    scheduledOffersCount +
+    pastDueMembersCount +
+    deletionRequestsCount +
+    featuredExpiringSoonCount +
+    featuredLapsedCount
+  );
+}

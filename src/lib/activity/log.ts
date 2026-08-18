@@ -14,7 +14,10 @@ export type ActivityEntityType =
   | "notification"
   | "category"
   | "settings"
-  | "banner";
+  | "banner"
+  | "business_application"
+  | "business_application_status"
+  | "featured_payment_request";
 
 export type LogActivityInput = {
   adminId: string;

@@ -12,6 +12,7 @@ import { NavLink } from "@/components/nav-link";
 const NAV_ITEMS = [
   { href: "/home", label: "Dashboard" },
   { href: "/businesses", label: "Businesses" },
+  { href: "/business-applications", label: "Applications" },
   { href: "/featured", label: "Featured" },
   { href: "/members", label: "Members" },
   { href: "/subscriptions", label: "Subscriptions" },
@@ -21,22 +22,56 @@ const NAV_ITEMS = [
   { href: "/settings", label: "Settings" },
 ];
 
-export function AdminNav() {
+// href -> live count for the small gold pill badge next to a nav item's
+// label. Zero/absent counts render no badge at all. Plain helper, not a
+// hook — no "use" prefix, it calls no hooks of its own.
+function navBadgeCounts(
+  newApplicationsCount: number,
+  actionCentreCount: number,
+  unpaidFeaturedCount: number,
+): Record<string, number> {
+  return {
+    "/business-applications": newApplicationsCount,
+    "/home": actionCentreCount,
+    "/featured": unpaidFeaturedCount,
+  };
+}
+
+export function AdminNav({
+  newApplicationsCount = 0,
+  actionCentreCount = 0,
+  unpaidFeaturedCount = 0,
+}: {
+  newApplicationsCount?: number;
+  actionCentreCount?: number;
+  unpaidFeaturedCount?: number;
+}) {
   const pathname = usePathname();
+  const badges = navBadgeCounts(newApplicationsCount, actionCentreCount, unpaidFeaturedCount);
 
   return (
     <nav className="flex flex-col gap-1 p-3">
       {NAV_ITEMS.map((item) => {
         const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const badgeCount = badges[item.href] ?? 0;
         return (
           <NavLink
             key={item.href}
             href={item.href}
-            className={`rounded-lg px-3 py-2 text-sm font-medium ${
+            className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium ${
               isActive ? "privi-gold-border border bg-teal text-ivory [--gold-border-bg:var(--color-teal)]" : "text-charcoal hover:bg-border-hairline-2"
             }`}
           >
             {item.label}
+            {badgeCount > 0 && (
+              <span
+                className={`ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold ${
+                  isActive ? "bg-ivory text-teal" : "privi-gold-fill text-charcoal"
+                }`}
+              >
+                {badgeCount}
+              </span>
+            )}
           </NavLink>
         );
       })}
