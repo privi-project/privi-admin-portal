@@ -31,15 +31,52 @@ export default async function FeaturedPage() {
     <div className="p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-medium">Featured placement</h1>
-        <NavLink href="/featured/export.csv" className="text-sm text-gold">
-          Export CSV
-        </NavLink>
       </div>
       <p className="mt-1 text-sm text-muted-dark">
         Every business currently on a featured term, and any whose term has
         lapsed but hasn&apos;t been cleared yet. Set or renew a business&apos;s
         featured placement from its own edit page.
       </p>
+
+      <form
+        action="/featured/export.csv"
+        method="GET"
+        className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-border-hairline bg-white p-4"
+      >
+        <div className="flex flex-col gap-1">
+          <label htmlFor="featured-export-from" className="text-xs text-muted-dark">
+            From
+          </label>
+          <input
+            id="featured-export-from"
+            type="date"
+            name="from"
+            className="rounded-lg border border-border-hairline px-3 py-2 text-sm"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="featured-export-to" className="text-xs text-muted-dark">
+            To
+          </label>
+          <input
+            id="featured-export-to"
+            type="date"
+            name="to"
+            className="rounded-lg border border-border-hairline px-3 py-2 text-sm"
+          />
+        </div>
+        <button
+          type="submit"
+          className="privi-gold-border rounded-lg border bg-teal px-4 py-2 text-sm font-medium text-ivory [--gold-border-bg:var(--color-teal)]"
+        >
+          Export CSV
+        </button>
+        <p className="w-full text-xs text-muted-dark">
+          This is the permanent accounting record — every period ever set,
+          matched against what was charged, whether or not that placement
+          is still active. Leave both dates blank to export everything.
+        </p>
+      </form>
 
       <div className="mt-4 flex gap-4">
         <div className="rounded-2xl border border-border-hairline bg-white px-4 py-3">

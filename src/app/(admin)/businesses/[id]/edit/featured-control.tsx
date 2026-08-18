@@ -92,6 +92,18 @@ export function FeaturedControl({ business }: { business: Business }) {
             </select>
           </label>
         </div>
+        <label className="flex flex-col gap-1 text-sm">
+          Amount charged (£)
+          <input
+            type="number"
+            name="amount_charged"
+            min="0.01"
+            step="0.01"
+            required
+            placeholder="e.g. 15.00"
+            className="rounded-lg border border-border-hairline px-3 py-2"
+          />
+        </label>
         <div className="flex gap-3">
           <button
             type="submit"

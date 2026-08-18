@@ -568,3 +568,28 @@ alter table public.offers add column if not exists redeem_where text not null de
 -- manually resets featured_level back to 'none' — the founder doesn't
 -- have to remember on the exact day.
 alter table public.businesses add column if not exists featured_expires_at timestamptz;
+
+-- Permanent ledger for accounting/invoice cross-referencing (2026-08-19)
+-- — businesses.featured_level/featured_expires_at only ever hold the
+-- CURRENT state, so clearing a business's featured placement loses the
+-- record entirely (exactly the moment the founder needs it, to
+-- reconcile what was actually paid). This is append-only: a new row per
+-- set/renew, never updated or deleted, independent of whatever the
+-- business's live featured status is now.
+create table if not exists public.featured_history (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  featured_level text not null check (featured_level in ('category', 'global')),
+  duration_months integer not null,
+  amount_charged numeric(10,2),
+  started_at timestamptz not null,
+  expires_at timestamptz not null,
+  created_by uuid references public.admin_users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.featured_history enable row level security;
+-- Intentionally no policies — service_role-only, same pattern as
+-- admin_users/admin_activity_log/system_settings/notifications.
+
+create index if not exists featured_history_business_idx on public.featured_history (business_id);

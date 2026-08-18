@@ -28,10 +28,19 @@ export async function setFeaturedAction(
 
   const tier = String(formData.get("featured_level") ?? "");
   const duration = String(formData.get("duration") ?? "");
+  const amountRaw = String(formData.get("amount_charged") ?? "").trim();
 
   if (!FEATURED_TIERS.includes(tier)) return { error: "Select a tier." };
   const validDurations = FEATURED_DURATIONS.map((d) => d.value) as string[];
   if (!validDurations.includes(duration)) return { error: "Select a duration." };
+
+  // Founder's explicit policy: featured placement is never free. Required
+  // here (not just a nullable DB column) so the accounting ledger below
+  // is never missing the one figure it exists to record.
+  const amount = Number(amountRaw);
+  if (!amountRaw || Number.isNaN(amount) || amount <= 0) {
+    return { error: "Enter the amount actually charged for this term." };
+  }
 
   if (tier === "global") {
     const activeGlobal = await listActiveGlobalFeatured(businessId);
@@ -75,13 +84,26 @@ export async function setFeaturedAction(
 
   if (error) return { error: error.message };
 
+  // Permanent ledger entry — independent of the businesses row above, so
+  // clearing/lapsing later never loses this record. See schema.sql's
+  // featured_history comment for why this exists as its own table.
+  await adminClient.from("featured_history").insert({
+    business_id: businessId,
+    featured_level: tier,
+    duration_months: Number(duration),
+    amount_charged: amount,
+    started_at: now.toISOString(),
+    expires_at: expires.toISOString(),
+    created_by: session.userId,
+  });
+
   await logActivity({
     adminId: session.userId,
     adminEmail: session.email,
     action: "updated",
     entityType: "business",
     entityId: businessId,
-    entityLabel: `${businessName} — featured (${tier}, ${duration}mo)`,
+    entityLabel: `${businessName} — featured (${tier}, ${duration}mo, £${amount.toFixed(2)})`,
   });
 
   revalidatePath("/featured");
