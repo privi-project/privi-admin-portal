@@ -53,84 +53,93 @@ export default async function MembersPage({
 
       <form
         method="get"
-        className="mt-6 flex flex-wrap items-end gap-3 rounded-2xl border border-border-hairline bg-white p-4"
+        className="mt-6 flex flex-col gap-3 rounded-2xl border border-border-hairline bg-white p-4"
       >
-        <label className="flex flex-col gap-1 text-sm">
-          Search
-          <input
-            type="text"
-            name="q"
-            defaultValue={params.q ?? ""}
-            placeholder="Name or email"
-            className="rounded-lg border border-border-hairline px-3 py-2"
-          />
-        </label>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            Search
+            <input
+              type="text"
+              name="q"
+              defaultValue={params.q ?? ""}
+              placeholder="Name or email"
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            />
+          </label>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Status
-          <select
-            name="status"
-            defaultValue={params.status ?? ""}
-            className="rounded-lg border border-border-hairline px-3 py-2"
+          <label className="flex flex-col gap-1 text-sm">
+            Status
+            <select
+              name="status"
+              defaultValue={params.status ?? ""}
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            >
+              <option value="">All statuses</option>
+              {MEMBER_STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm">
+            Plan
+            <select
+              name="plan"
+              defaultValue={params.plan ?? ""}
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            >
+              <option value="">All plans</option>
+              <option value="monthly">Monthly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+
+          {/* Grouped as one flex item so wrapping can't split the pair
+              apart onto separate rows — was landing "Joined from" and
+              "Joined to" in visually unrelated spots. */}
+          <div className="flex items-end gap-2">
+            <label className="flex flex-col gap-1 text-sm">
+              Joined from
+              <input
+                type="date"
+                name="from"
+                defaultValue={params.from ?? ""}
+                className="rounded-lg border border-border-hairline px-3 py-2"
+              />
+            </label>
+            <span className="pb-2.5 text-muted-dark">–</span>
+            <label className="flex flex-col gap-1 text-sm">
+              Joined to
+              <input
+                type="date"
+                name="to"
+                defaultValue={params.to ?? ""}
+                className="rounded-lg border border-border-hairline px-3 py-2"
+              />
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            className="rounded-lg border border-border-hairline px-4 py-2 text-sm font-medium"
           >
-            <option value="">All statuses</option>
-            {MEMBER_STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            Apply
+          </button>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
-          Plan
-          <select
-            name="plan"
-            defaultValue={params.plan ?? ""}
-            className="rounded-lg border border-border-hairline px-3 py-2"
-          >
-            <option value="">All plans</option>
-            <option value="monthly">Monthly</option>
-            <option value="annual">Annual</option>
-          </select>
-        </label>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="complimentary" defaultChecked={params.complimentary === "on"} />
+            Complimentary only
+          </label>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="complimentary" defaultChecked={params.complimentary === "on"} />
-          Complimentary only
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="suspended" defaultChecked={params.suspended === "on"} />
-          Suspended only
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm">
-          Joined from
-          <input
-            type="date"
-            name="from"
-            defaultValue={params.from ?? ""}
-            className="rounded-lg border border-border-hairline px-3 py-2"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm">
-          Joined to
-          <input
-            type="date"
-            name="to"
-            defaultValue={params.to ?? ""}
-            className="rounded-lg border border-border-hairline px-3 py-2"
-          />
-        </label>
-
-        <button
-          type="submit"
-          className="rounded-lg border border-border-hairline px-4 py-2 text-sm font-medium"
-        >
-          Apply
-        </button>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="suspended" defaultChecked={params.suspended === "on"} />
+            Suspended only
+          </label>
+        </div>
       </form>
 
       <div className="mt-6 divide-y divide-border-hairline rounded-2xl border border-border-hairline bg-white">
