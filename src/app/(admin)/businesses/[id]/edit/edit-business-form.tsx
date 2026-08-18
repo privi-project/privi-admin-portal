@@ -163,38 +163,10 @@ export function EditBusinessForm({
         />
       </label>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm">Featured</legend>
-        <div className="flex flex-col gap-1 rounded-lg border border-border-hairline p-3 text-sm">
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="featured_level"
-              value="none"
-              defaultChecked={business.featured_level === "none"}
-            />
-            Not featured
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="featured_level"
-              value="category"
-              defaultChecked={business.featured_level === "category"}
-            />
-            Featured in its categories
-          </label>
-          <label className="flex items-center gap-2">
-            <input
-              type="radio"
-              name="featured_level"
-              value="global"
-              defaultChecked={business.featured_level === "global"}
-            />
-            Featured everywhere
-          </label>
-        </div>
-      </fieldset>
+      <p className="text-xs text-muted-dark">
+        Featured placement is now managed separately below — it's a paid
+        product with its own term, not a plain on/off setting.
+      </p>
 
       <label className="flex flex-col gap-1 text-sm">
         Internal notes (not shown to members)

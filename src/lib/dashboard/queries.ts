@@ -1,5 +1,5 @@
 import { listMembers } from "@/lib/members/queries";
-import { listBusinesses } from "@/lib/businesses/queries";
+import { listBusinesses, effectiveFeaturedLevel } from "@/lib/businesses/queries";
 import { listAllOffers, effectiveStatus, type OfferWithBusinessName } from "@/lib/offers/queries";
 import { getSubscriptionOverview } from "@/lib/subscriptions/queries";
 import { getSystemSettings } from "@/lib/system-settings/queries";
@@ -16,6 +16,7 @@ export type DashboardSummary = {
   };
   businesses: { active: number; inactive: number };
   offers: { active: number; scheduled: number; expired: number };
+  featured: { active: number };
   mrr: number;
   arr: number;
   actionCentre: {
@@ -24,6 +25,8 @@ export type DashboardSummary = {
     scheduledOffers: OfferWithBusinessName[];
     pastDueMembers: { id: string; name: string; email: string }[];
     deletionRequests: { id: string; name: string; requestedAt: string }[];
+    featuredExpiringSoon: { id: string; name: string; expires_at: string }[];
+    featuredLapsed: { id: string; name: string; expired_at: string }[];
   };
   recentActivity: ActivityLogRow[];
 };
@@ -78,6 +81,23 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
     (o) => o.effective === "scheduled" && o.start_date && o.start_date <= warningCutoffStr,
   );
 
+  const warningCutoffFull = warningCutoff.toISOString();
+  const featuredBusinesses = businesses.filter((b) => b.featured_level !== "none");
+  const featuredSummary = {
+    active: featuredBusinesses.filter((b) => effectiveFeaturedLevel(b) !== "none").length,
+  };
+  const featuredExpiringSoon = featuredBusinesses
+    .filter(
+      (b) =>
+        effectiveFeaturedLevel(b) !== "none" &&
+        b.featured_expires_at &&
+        b.featured_expires_at <= warningCutoffFull,
+    )
+    .map((b) => ({ id: b.id, name: b.name, expires_at: b.featured_expires_at as string }));
+  const featuredLapsed = featuredBusinesses
+    .filter((b) => effectiveFeaturedLevel(b) === "none" && b.featured_expires_at)
+    .map((b) => ({ id: b.id, name: b.name, expired_at: b.featured_expires_at as string }));
+
   const deletionRequests = members
     .filter((m) => m.deletion_requested_at)
     .map((m) => ({
@@ -90,6 +110,7 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
     members: memberSummary,
     businesses: businessSummary,
     offers: offerSummary,
+    featured: featuredSummary,
     mrr: subscriptionOverview.mrr,
     arr: subscriptionOverview.arr,
     actionCentre: {
@@ -98,6 +119,8 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
       scheduledOffers,
       pastDueMembers: subscriptionOverview.pastDueMembers,
       deletionRequests,
+      featuredExpiringSoon,
+      featuredLapsed,
     },
     recentActivity,
   };

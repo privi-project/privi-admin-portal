@@ -5,10 +5,14 @@ import { NavLink } from "@/components/nav-link";
 
 // Admin_Portal_Structure.docx's "Final v1 Navigation" list, in order.
 // Reports is dashboard-level only at v1 (no separate page, folded into
-// Dashboard's summary figures) so it's not a nav item.
+// Dashboard's summary figures) so it's not a nav item. "Featured" added
+// 2026-08-19 — post-v1, once featured placement became a real paid
+// product needing its own management view rather than a per-business
+// setting.
 const NAV_ITEMS = [
   { href: "/home", label: "Dashboard" },
   { href: "/businesses", label: "Businesses" },
+  { href: "/featured", label: "Featured" },
   { href: "/members", label: "Members" },
   { href: "/subscriptions", label: "Subscriptions" },
   { href: "/notifications", label: "Notifications" },

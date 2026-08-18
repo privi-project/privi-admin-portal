@@ -148,6 +148,7 @@ export default async function DashboardPage({
           <StatTile label="Active offers" value={String(summary.offers.active)} />
           <StatTile label="Scheduled offers" value={String(summary.offers.scheduled)} />
           <StatTile label="Expired offers" value={String(summary.offers.expired)} />
+          <StatTile label="Featured (active)" value={String(summary.featured.active)} href="/featured" />
         </div>
         <p className="mt-2 text-xs text-muted-dark">
           &quot;Cancelled&quot; and MRR/ARR are current snapshots, not

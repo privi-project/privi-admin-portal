@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/nav-link";
-import { listBusinesses } from "@/lib/businesses/queries";
+import { listBusinesses, effectiveFeaturedLevel } from "@/lib/businesses/queries";
 import { listCategories } from "@/lib/categories/queries";
 import { BUSINESS_STATUSES } from "@/lib/businesses/config";
 import { StatusBadge } from "@/components/status-badge";
@@ -146,9 +146,9 @@ export default async function BusinessesPage({
               </div>
             </div>
 
-            {business.featured_level !== "none" && (
+            {effectiveFeaturedLevel(business) !== "none" && (
               <span className="privi-gold-text inline-flex items-center rounded-full border border-gold px-2.5 py-0.5 text-xs font-medium">
-                Featured{business.featured_level === "global" ? " (everywhere)" : ""}
+                Featured{effectiveFeaturedLevel(business) === "global" ? " (homepage and category)" : " (category only)"}
               </span>
             )}
 

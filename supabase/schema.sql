@@ -554,3 +554,17 @@ alter table public.business_locations add column if not exists is_accessible boo
 -- today (in-person redemption, as the App has always assumed).
 alter table public.offers add column if not exists redeem_where text not null default 'in_store'
   check (redeem_where in ('in_store', 'online', 'both'));
+
+-- Featured placement is now a real paid product (2026-08-19), not just a
+-- founder-flipped flag — featured_level/featured_at alone had no way to
+-- represent a PAID TERM (1 or 3 months) ending. featured_expires_at is
+-- the term's end date; NULL means "not on a term" (shouldn't happen once
+-- a business is actually featured via the dedicated Featured control, but
+-- kept nullable rather than adding a not-null constraint that would break
+-- any business already featured before this column existed). Computed
+-- read-time expiry (same pattern as offers' effectiveStatus — see
+-- src/lib/businesses/queries.ts effectiveFeaturedLevel) means a lapsed
+-- term naturally stops boosting the business in the App even if nobody
+-- manually resets featured_level back to 'none' — the founder doesn't
+-- have to remember on the exact day.
+alter table public.businesses add column if not exists featured_expires_at timestamptz;

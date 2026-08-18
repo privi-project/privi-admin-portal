@@ -144,23 +144,10 @@ export function NewBusinessForm({
         />
       </label>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm">Featured</legend>
-        <div className="flex flex-col gap-1 rounded-lg border border-border-hairline p-3 text-sm">
-          <label className="flex items-center gap-2">
-            <input type="radio" name="featured_level" value="none" defaultChecked />
-            Not featured
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="radio" name="featured_level" value="category" />
-            Featured in its categories
-          </label>
-          <label className="flex items-center gap-2">
-            <input type="radio" name="featured_level" value="global" />
-            Featured everywhere
-          </label>
-        </div>
-      </fieldset>
+      <p className="text-xs text-muted-dark">
+        Featured placement can be set up once this business is saved — it's
+        a paid product with its own term, managed from the edit page.
+      </p>
 
       <label className="flex flex-col gap-1 text-sm">
         Internal notes (not shown to members)

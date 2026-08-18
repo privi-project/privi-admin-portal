@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getBusiness, getBusinessCategoryIds } from "@/lib/businesses/queries";
 import { CategoryMultiselect } from "@/components/category-multiselect";
 import { EditBusinessForm } from "./edit-business-form";
+import { FeaturedControl } from "./featured-control";
 import { BusinessArchiveControl } from "./business-archive-control";
 import { BusinessDeleteControl } from "./business-delete-control";
 import { LocationsList } from "./locations-list";
@@ -46,6 +47,8 @@ export default async function EditBusinessPage({
         business={business}
         categoryMultiselect={<CategoryMultiselect selectedIds={selectedCategoryIds} />}
       />
+
+      <FeaturedControl business={business} />
 
       <LocationsList businessId={id} />
       <OffersList businessId={id} />
