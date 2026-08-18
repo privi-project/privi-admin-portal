@@ -1,5 +1,5 @@
 import { NavLink } from "@/components/nav-link";
-import { getSubscriptionOverview } from "@/lib/subscriptions/queries";
+import { getSubscriptionOverview, getSubscriptionPeriodReport } from "@/lib/subscriptions/queries";
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
@@ -10,8 +10,18 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default async function SubscriptionsPage() {
+export default async function SubscriptionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const params = await searchParams;
   const overview = await getSubscriptionOverview();
+
+  const hasRange = !!(params.from && params.to);
+  const periodReport = hasRange
+    ? await getSubscriptionPeriodReport(params.from!, `${params.to}T23:59:59.999Z`)
+    : null;
 
   return (
     <div className="p-6">
@@ -40,6 +50,59 @@ export default async function SubscriptionsPage() {
         rate is a current snapshot, not a time-windowed rate — no historical
         subscription-event log exists to compute one properly.
       </p>
+
+      <h2 className="mt-8 text-sm font-medium text-muted-dark">Report for a date range</h2>
+      <p className="mt-1 text-xs text-muted-dark">
+        MRR/ARR/active-count above are point-in-time snapshots ("as of
+        now") — they don&apos;t have a meaningful "for this period" version
+        without real historical tracking, so they&apos;re not part of this.
+        What actually changed during a chosen range: new subscriptions
+        started, subscriptions cancelled, and money actually collected/
+        refunded — all pulled live from Stripe.
+      </p>
+      <form
+        method="get"
+        className="mt-3 flex flex-wrap items-end gap-3 rounded-2xl border border-border-hairline bg-white p-4"
+      >
+        <div className="flex items-end gap-2">
+          <label className="flex flex-col gap-1 text-sm">
+            From
+            <input
+              type="date"
+              name="from"
+              defaultValue={params.from ?? ""}
+              required
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            />
+          </label>
+          <span className="pb-2.5 text-muted-dark">–</span>
+          <label className="flex flex-col gap-1 text-sm">
+            To
+            <input
+              type="date"
+              name="to"
+              defaultValue={params.to ?? ""}
+              required
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            />
+          </label>
+        </div>
+        <button
+          type="submit"
+          className="privi-gold-border rounded-lg border bg-teal px-4 py-2 text-sm font-medium text-ivory [--gold-border-bg:var(--color-teal)]"
+        >
+          Run report
+        </button>
+      </form>
+
+      {periodReport && (
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatTile label="New subscriptions" value={String(periodReport.newSubscriptions)} />
+          <StatTile label="Cancellations" value={String(periodReport.cancellations)} />
+          <StatTile label="Revenue collected" value={`£${periodReport.revenueCollectedGbp.toFixed(2)}`} />
+          <StatTile label="Refunds" value={`£${periodReport.refundsGbp.toFixed(2)}`} />
+        </div>
+      )}
 
       {overview.pastDueMembers.length > 0 && (
         <div className="mt-6 max-w-md">
