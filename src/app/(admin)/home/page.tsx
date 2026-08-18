@@ -215,6 +215,26 @@ export default async function DashboardPage({
               meta: new Date(m.requestedAt).toLocaleDateString(),
             }))}
           />
+          <ActionList
+            title="Featured placements expiring soon"
+            emptyLabel="Nothing expiring soon."
+            items={summary.actionCentre.featuredExpiringSoon.map((b) => ({
+              key: b.id,
+              href: `/businesses/${b.id}/edit`,
+              label: b.name,
+              meta: new Date(b.expires_at).toLocaleDateString(),
+            }))}
+          />
+          <ActionList
+            title="Featured placements lapsed"
+            emptyLabel="None lapsed."
+            items={summary.actionCentre.featuredLapsed.map((b) => ({
+              key: b.id,
+              href: `/businesses/${b.id}/edit`,
+              label: b.name,
+              meta: new Date(b.expired_at).toLocaleDateString(),
+            }))}
+          />
         </div>
       </section>
 
