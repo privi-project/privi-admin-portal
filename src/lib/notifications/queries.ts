@@ -18,6 +18,10 @@ export type Notification = {
   targeted_count: number | null;
   sent_count: number | null;
   failed_count: number | null;
+  requires_acknowledgement: boolean;
+  document_url: string | null;
+  action_label: string | null;
+  action_destination: string | null;
   created_at: string;
   updated_at: string;
 };

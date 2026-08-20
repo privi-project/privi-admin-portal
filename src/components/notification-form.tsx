@@ -1,8 +1,10 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { NOTIFICATION_TYPES, AUDIENCE_TYPES } from "@/lib/notification-config";
+import { NOTIFICATION_TYPES, AUDIENCE_TYPES, ACTION_DESTINATIONS } from "@/lib/notification-config";
 import { useUnsavedChangesGuard } from "@/lib/navigation-blocker";
+import { MemberCombobox } from "@/components/member-combobox";
+import { BusinessCombobox } from "@/components/business-combobox";
 
 type NotificationFormState = { error?: string } | undefined;
 
@@ -40,6 +42,10 @@ type NotificationFormProps = {
     scheduled_at?: string | null;
     expires_at?: string | null;
     selectedLocationIds?: string[];
+    requires_acknowledgement?: boolean;
+    document_url?: string | null;
+    action_label?: string | null;
+    action_destination?: string | null;
   };
 };
 
@@ -69,13 +75,19 @@ export function NotificationForm({
   const [isDirty, setIsDirty] = useState(false);
   useUnsavedChangesGuard(isDirty);
 
+  // "general" retired from NOTIFICATION_TYPES (2026-08-20) — "announcement"
+  // is its closest replacement as a neutral default for a brand-new form.
   const [notificationType, setNotificationType] = useState(
-    initial?.notification_type ?? "general",
+    initial?.notification_type ?? "announcement",
   );
   const [audienceType, setAudienceType] = useState(initial?.audience_type ?? "area");
+  const [requiresAcknowledgement, setRequiresAcknowledgement] = useState(
+    initial?.requires_acknowledgement ?? false,
+  );
 
   const isOfferType = notificationType === "new_offer" || notificationType === "offer_ending_soon";
   const isLocationType = notificationType === "new_location";
+  const isAccountAlertType = notificationType === "account_alert";
 
   // Business the offer picker is currently scoped to — keeps the offer
   // dropdown short (that business's offers only) instead of every offer
@@ -172,7 +184,7 @@ export function NotificationForm({
         Type
         <select
           name="notification_type"
-          defaultValue={initial?.notification_type ?? "general"}
+          defaultValue={initial?.notification_type ?? "announcement"}
           onChange={(e) => {
             setNotificationType(e.target.value);
             setIsDirty(true);
@@ -188,50 +200,34 @@ export function NotificationForm({
       </label>
 
       {notificationType === "new_business" && (
-        <label className="flex flex-col gap-1 text-sm">
-          Business
-          <select
+        <div className="flex flex-col gap-1 text-sm">
+          <BusinessCombobox
+            businesses={businesses}
             name="linked_business_id"
+            defaultValue={initial?.linked_business_id ?? undefined}
+            label="Business"
             required
-            defaultValue={initial?.linked_business_id ?? ""}
-            className="rounded-lg border border-border-hairline px-3 py-2"
-          >
-            <option value="" disabled>
-              Select a business
-            </option>
-            {businesses.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
+            helpText="Start typing a business name…"
+          />
+        </div>
       )}
 
       {isOfferType && (
         <>
-          <label className="flex flex-col gap-1 text-sm">
-            Business
-            <select
+          <div className="flex flex-col gap-1 text-sm">
+            <BusinessCombobox
+              businesses={businesses}
               name="linked_business_id"
+              defaultValue={initial?.linked_business_id ?? undefined}
+              label="Business"
               required
-              value={offerBusinessId}
-              onChange={(e) => {
-                setOfferBusinessId(e.target.value);
+              helpText="Start typing a business name…"
+              onSelect={(id) => {
+                setOfferBusinessId(id);
                 setIsDirty(true);
               }}
-              className="rounded-lg border border-border-hairline px-3 py-2"
-            >
-              <option value="" disabled>
-                Select a business
-              </option>
-              {businesses.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
 
           <label className="flex flex-col gap-1 text-sm">
             Offer
@@ -262,28 +258,20 @@ export function NotificationForm({
 
       {isLocationType && (
         <>
-          <label className="flex flex-col gap-1 text-sm">
-            Business
-            <select
+          <div className="flex flex-col gap-1 text-sm">
+            <BusinessCombobox
+              businesses={businesses}
               name="linked_business_id"
+              defaultValue={initial?.linked_business_id ?? undefined}
+              label="Business"
               required
-              value={locationBusinessId}
-              onChange={(e) => {
-                setLocationBusinessId(e.target.value);
+              helpText="Start typing a business name…"
+              onSelect={(id) => {
+                setLocationBusinessId(id);
                 setIsDirty(true);
               }}
-              className="rounded-lg border border-border-hairline px-3 py-2"
-            >
-              <option value="" disabled>
-                Select a business
-              </option>
-              {businesses.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
 
           <fieldset className="flex flex-col gap-1 text-sm">
             <legend>Which location(s) — audience targeting matches only these, not the business's other locations</legend>
@@ -310,6 +298,86 @@ export function NotificationForm({
         </>
       )}
 
+      {isAccountAlertType && (
+        <fieldset className="flex flex-col gap-3 rounded-lg border border-border-hairline p-3">
+          <legend className="text-sm">Action button (optional)</legend>
+
+          <label className="flex flex-col gap-1 text-sm">
+            Document link (optional)
+            <input
+              type="url"
+              name="document_url"
+              defaultValue={initial?.document_url ?? ""}
+              placeholder="https://privi.info/legal/terms-and-conditions"
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            />
+            <span className="text-xs text-muted-dark">
+              Opens in the member&apos;s browser from inside the app — the
+              website page stays the one place this content actually lives.
+            </span>
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="requires_acknowledgement"
+              checked={requiresAcknowledgement}
+              onChange={(e) => {
+                setRequiresAcknowledgement(e.target.checked);
+                setIsDirty(true);
+              }}
+            />
+            Requires acknowledgement
+          </label>
+
+          {requiresAcknowledgement ? (
+            <label className="flex flex-col gap-1 text-sm">
+              Button label
+              <input
+                type="text"
+                name="action_label"
+                defaultValue={initial?.action_label ?? ""}
+                placeholder="I Accept"
+                className="rounded-lg border border-border-hairline px-3 py-2"
+              />
+              <span className="text-xs text-muted-dark">
+                Tapping this records the member&apos;s acceptance (who, when)
+                — that&apos;s a real, timestamped record, not just closing
+                the alert. Leave blank to use &quot;I Accept&quot;.
+              </span>
+            </label>
+          ) : (
+            <>
+              <label className="flex flex-col gap-1 text-sm">
+                Button label
+                <input
+                  type="text"
+                  name="action_label"
+                  defaultValue={initial?.action_label ?? ""}
+                  placeholder="e.g. Update Payment Method"
+                  className="rounded-lg border border-border-hairline px-3 py-2"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                Takes the member to
+                <select
+                  name="action_destination"
+                  defaultValue={initial?.action_destination ?? ""}
+                  className="rounded-lg border border-border-hairline px-3 py-2"
+                >
+                  <option value="">No button — informational only</option>
+                  {ACTION_DESTINATIONS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+        </fieldset>
+      )}
+
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm">Audience</legend>
         <div className="flex flex-col gap-1 rounded-lg border border-border-hairline p-3">
@@ -333,24 +401,16 @@ export function NotificationForm({
         {audienceType === "area" && (
           <div className="flex flex-col gap-3 rounded-lg border border-border-hairline p-3">
             {showsReferencePicker ? (
-              <label className="flex flex-col gap-1 text-sm">
-                Reference business (centre of the radius)
-                <select
+              <div className="flex flex-col gap-1 text-sm">
+                <BusinessCombobox
+                  businesses={businesses}
                   name="audience_reference_business_id"
+                  defaultValue={initial?.audience_reference_business_id ?? undefined}
+                  label="Reference business (centre of the radius)"
                   required
-                  defaultValue={initial?.audience_reference_business_id ?? ""}
-                  className="rounded-lg border border-border-hairline px-3 py-2"
-                >
-                  <option value="" disabled>
-                    Select a business
-                  </option>
-                  {businesses.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  helpText="Start typing a business name…"
+                />
+              </div>
             ) : (
               <p className="text-xs text-muted-dark">
                 Centred on{" "}
@@ -376,24 +436,9 @@ export function NotificationForm({
         )}
 
         {audienceType === "individual" && (
-          <label className="flex flex-col gap-1 text-sm rounded-lg border border-border-hairline p-3">
-            Member
-            <select
-              name="audience_member_id"
-              required
-              defaultValue={initial?.audience_member_id ?? ""}
-              className="rounded-lg border border-border-hairline px-3 py-2"
-            >
-              <option value="" disabled>
-                Select a member
-              </option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.first_name} {m.last_name} ({m.email})
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="rounded-lg border border-border-hairline p-3">
+            <MemberCombobox members={members} defaultValue={initial?.audience_member_id ?? undefined} />
+          </div>
         )}
       </fieldset>
 

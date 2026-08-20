@@ -28,10 +28,13 @@ function readNotificationFields(formData: FormData) {
   const explicitReferenceBusinessId =
     String(formData.get("audience_reference_business_id") ?? "").trim() || null;
 
+  const notificationType = String(formData.get("notification_type") ?? "announcement");
+  const requiresAcknowledgement = formData.get("requires_acknowledgement") === "on";
+
   return {
     title: String(formData.get("title") ?? "").trim(),
     body: String(formData.get("body") ?? "").trim(),
-    notification_type: String(formData.get("notification_type") ?? "general"),
+    notification_type: notificationType,
     linked_business_id: linkedBusinessId,
     linked_offer_id: String(formData.get("linked_offer_id") ?? "").trim() || null,
     audience_type: audienceType,
@@ -46,6 +49,21 @@ function readNotificationFields(formData: FormData) {
     audience_reference_business_id: explicitReferenceBusinessId ?? linkedBusinessId,
     scheduled_at: toScheduledTimestamp(String(formData.get("scheduled_at") ?? "").trim() || null),
     expires_at: String(formData.get("expires_at") ?? "").trim() || null,
+    // Only meaningful for notification_type === "account_alert" — the
+    // form only renders these fields in that case, but they're read
+    // unconditionally here since an unrelated type just won't have sent
+    // them (all fall back to false/null, matching the column defaults).
+    requires_acknowledgement: requiresAcknowledgement,
+    document_url: String(formData.get("document_url") ?? "").trim() || null,
+    action_label: String(formData.get("action_label") ?? "").trim() || null,
+    // notification-form.tsx never renders the destination select when
+    // "requires acknowledgement" is checked (mutually exclusive branches)
+    // — an acknowledgement alert's button always records+dismisses, never
+    // navigates, so this is explicitly forced null rather than relying on
+    // the field simply being absent from formData.
+    action_destination: requiresAcknowledgement
+      ? null
+      : String(formData.get("action_destination") ?? "").trim() || null,
   };
 }
 
@@ -62,6 +80,19 @@ function validateNotificationFields(
   }
   if (fields.audience_type === "area" && !fields.audience_reference_business_id) {
     return "Select a reference business for area-based targeting.";
+  }
+  // These were previously only enforced by the <select>'s native
+  // `required` attribute — BusinessCombobox's equivalent value lives in a
+  // hidden input, which browsers don't reliably validate, so this is now
+  // the real backstop rather than a redundant belt-and-braces check.
+  if (
+    (fields.notification_type === "new_business" ||
+      fields.notification_type === "new_offer" ||
+      fields.notification_type === "offer_ending_soon" ||
+      fields.notification_type === "new_location") &&
+    !fields.linked_business_id
+  ) {
+    return "Select a business.";
   }
   if (fields.notification_type === "new_location" && locationIds.length === 0) {
     return "Select at least one location for a New location notification.";
@@ -283,7 +314,7 @@ export async function duplicateNotificationAction(id: string) {
   const { data: original } = await adminClient
     .from("notifications")
     .select(
-      "title, body, notification_type, linked_business_id, linked_offer_id, audience_type, audience_member_id, audience_radius_miles, audience_reference_business_id",
+      "title, body, notification_type, linked_business_id, linked_offer_id, audience_type, audience_member_id, audience_radius_miles, audience_reference_business_id, requires_acknowledgement, document_url, action_label, action_destination",
     )
     .eq("id", id)
     .maybeSingle();

@@ -100,6 +100,10 @@ export default async function EditNotificationPage({
           scheduled_at: notification.scheduled_at,
           expires_at: notification.expires_at,
           selectedLocationIds,
+          requires_acknowledgement: notification.requires_acknowledgement,
+          document_url: notification.document_url,
+          action_label: notification.action_label,
+          action_destination: notification.action_destination,
         }}
       />
     </div>

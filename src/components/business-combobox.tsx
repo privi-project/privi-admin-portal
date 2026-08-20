@@ -21,6 +21,8 @@ export function BusinessCombobox({
   label = "Link to existing business",
   helpText = "Start typing to filter — leave blank if this business isn't in Privi yet.",
   placeholder = "Start typing a business name…",
+  required,
+  onSelect,
 }: {
   businesses: BusinessComboboxOption[];
   name?: string;
@@ -28,6 +30,17 @@ export function BusinessCombobox({
   label?: string;
   helpText?: string;
   placeholder?: string;
+  /** Native `required` on the hidden input carrying the actual value —
+   * off by default since this component started life as an optional
+   * link, but callers with a genuinely required business picker (e.g.
+   * notification-form.tsx) need real browser-level validation, not just
+   * a silent empty submit. */
+  required?: boolean;
+  /** Called with the selected business's id (or '' on clear) — needed by
+   * any caller that has to react to the pick itself, not just read the
+   * final value at submit time (e.g. notification-form.tsx filtering an
+   * offer/location list by whichever business is currently selected). */
+  onSelect?: (businessId: string) => void;
 }) {
   const defaultBusiness = businesses.find((b) => b.id === defaultValue);
   const [query, setQuery] = useState(defaultBusiness?.name ?? "");
@@ -55,18 +68,20 @@ export function BusinessCombobox({
     setQuery(business.name);
     setSelectedId(business.id);
     setOpen(false);
+    onSelect?.(business.id);
   };
 
   const handleClear = () => {
     setQuery("");
     setSelectedId("");
     setOpen(false);
+    onSelect?.("");
   };
 
   return (
     <div ref={containerRef} className="relative flex flex-col gap-1 text-sm">
       {label}
-      <input type="hidden" name={name} value={selectedId} />
+      <input type="hidden" name={name} value={selectedId} required={required} />
       <input
         type="text"
         value={query}

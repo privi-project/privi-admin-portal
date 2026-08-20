@@ -417,6 +417,77 @@ alter table public.notification_locations enable row level security;
 -- announcement has no natural expiry).
 alter table public.notifications add column if not exists expires_at timestamptz;
 
+-- 2026-08-20: Account Alerts refinement. 'general' had no App toggle to
+-- map to and no destination on tap — replaced by 'account_alert' (legal/
+-- price/security, always delivered, App's locked "Account Alerts"
+-- toggle) and 'announcement' (app updates etc., also always delivered,
+-- no dedicated toggle). 'general' itself stays valid here (existing rows
+-- keep working, RPC still returns them unfiltered) but is retired from
+-- the admin form's own type list — nothing new gets created with it.
+alter table public.notifications drop constraint if exists notifications_notification_type_check;
+alter table public.notifications add constraint notifications_notification_type_check
+  check (notification_type in
+    ('new_business', 'new_offer', 'offer_ending_soon', 'general', 'new_location', 'account_alert', 'announcement'));
+
+-- Account Alerts sometimes need the member to actually do something, not
+-- just read something — a failed payment needs an "Update Payment
+-- Method" button, a T&Cs change needs an explicit "I Accept" the founder
+-- can point to as evidence rather than silent acceptance from opening a
+-- popup. One optional action button covers both: requires_acknowledgement
+-- decides whether tapping it records acceptance (via
+-- acknowledge_notification() below) or just navigates to
+-- action_destination. document_url is independent of both — any Account
+-- Alert can optionally link out to something to read (opened via the
+-- App's existing expo-web-browser pattern, not an in-app copy of the
+-- content).
+alter table public.notifications add column if not exists requires_acknowledgement boolean not null default false;
+alter table public.notifications add column if not exists document_url text;
+alter table public.notifications add column if not exists action_label text;
+alter table public.notifications add column if not exists action_destination text;
+
+-- Fixed set of known in-app routes, not a free-text URL — matches how
+-- every router.push(...) call in the App is a plain string literal, never
+-- a dynamic/admin-supplied path. 'personal_information' is the only
+-- destination that exists right now (there's no dedicated Billing
+-- screen — Personal Information is where "Manage Subscription" already
+-- lives); extend this list, not the field's shape, when a second real
+-- destination shows up.
+alter table public.notifications drop constraint if exists notifications_action_destination_check;
+alter table public.notifications add constraint notifications_action_destination_check
+  check (action_destination is null or action_destination in ('personal_information'));
+
+-- Acknowledgement audit trail — a deliberate, scoped exception to
+-- notificationReads.ts's "no server-side tracking of what a member does
+-- with a notification" design (App repo). Everything else about a
+-- notification tap stays exactly as local-only as it's always been; this
+-- table only ever records the acceptance event itself (who, which
+-- notification, when) for account_alert rows that require it, nothing
+-- about what else the member does. Member-writable via the
+-- security-definer RPC below rather than a direct RLS policy, matching
+-- notifications' own service-role-only philosophy.
+create table if not exists public.notification_acknowledgements (
+  notification_id uuid not null references public.notifications(id) on delete cascade,
+  member_id uuid not null references auth.users(id) on delete cascade,
+  acknowledged_at timestamptz not null default now(),
+  primary key (notification_id, member_id)
+);
+alter table public.notification_acknowledgements enable row level security;
+-- No policies — writes go through acknowledge_notification() only.
+
+create or replace function public.acknowledge_notification(p_notification_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.notification_acknowledgements (notification_id, member_id)
+  values (p_notification_id, auth.uid())
+  on conflict (notification_id, member_id) do nothing;
+end;
+$$;
+grant execute on function public.acknowledge_notification(uuid) to authenticated;
+
 -- Task #10 (Dashboard). Deletion requests aren't a self-service in-app
 -- flow (Section 9 removed ticket-raising entirely) — they arrive as an
 -- email to the privacy contact address, outside any table. This is a

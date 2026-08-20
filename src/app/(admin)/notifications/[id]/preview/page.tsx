@@ -82,6 +82,19 @@ export default async function NotificationPreviewPage({
             Expires {new Date(notification.expires_at).toLocaleString()}
           </p>
         )}
+        {notification.document_url && (
+          <p className="mt-3 text-xs text-ivory/60">Document link: {notification.document_url}</p>
+        )}
+        {notification.action_label && (
+          <p className="mt-3 text-xs text-ivory/60">
+            Button: &quot;{notification.action_label}&quot;
+            {notification.requires_acknowledgement
+              ? " — records acceptance"
+              : notification.action_destination
+                ? ` — takes the member to ${notification.action_destination}`
+                : ""}
+          </p>
+        )}
       </div>
 
       {notification.expires_at && new Date(notification.expires_at) < new Date() && (
