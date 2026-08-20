@@ -16,7 +16,12 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-4">
-      <Image src="/brand/privi-logo.png" alt="Privi" width={48} height={48} />
+      {/* height=48 with width computed from the logo's real 915/1241 ratio
+          (2026-08-19) — this was previously hardcoded to a square 48x48,
+          which silently stretched the logo since next/image doesn't
+          preserve aspect ratio on its own without matching intrinsic
+          dimensions or an object-fit rule. */}
+      <Image src="/brand/privi-logo.png" alt="Privi" width={35} height={48} />
       <form
         action={formAction}
         className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-border-hairline bg-white p-6 shadow-sm"
