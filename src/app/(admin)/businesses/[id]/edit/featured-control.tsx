@@ -31,6 +31,10 @@ export function FeaturedControl({
   // businesses with more than one location — a single-site business has
   // nothing to choose between.
   const [locationScope, setLocationScope] = useState(business.featured_location_scope);
+  // Controlled (not defaultChecked) so "Select all"/"Select none" below
+  // can drive every checkbox at once — needed once a business has enough
+  // locations that hand-ticking each one gets tedious.
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>(selectedFeaturedLocationIds);
 
   const effective = effectiveFeaturedLevel(business);
   const isRaw = business.featured_level !== "none";
@@ -135,18 +139,40 @@ export function FeaturedControl({
             </div>
 
             {locationScope === "selected" && (
-              <div className="grid grid-cols-1 gap-1 rounded-lg border border-border-hairline p-3">
-                {locations.map((loc) => (
-                  <label key={loc.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      name="locationIds"
-                      value={loc.id}
-                      defaultChecked={selectedFeaturedLocationIds.includes(loc.id)}
-                    />
-                    {loc.label ?? loc.formatted_address ?? loc.location_type}
-                  </label>
-                ))}
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-3 text-xs">
+                  <button
+                    type="button"
+                    className="text-gold"
+                    onClick={() => setSelectedLocationIds(locations.map((l) => l.id))}
+                  >
+                    Select all
+                  </button>
+                  <button type="button" className="text-gold" onClick={() => setSelectedLocationIds([])}>
+                    Select none
+                  </button>
+                </div>
+                {/* Capped height + 2-column grid, same fix as CategoryMultiselect
+                    uses for the same problem — a business with a lot of sites
+                    would otherwise turn this into one very long vertical list. */}
+                <div className="grid max-h-64 grid-cols-2 gap-1 overflow-y-auto rounded-lg border border-border-hairline p-3">
+                  {locations.map((loc) => (
+                    <label key={loc.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        name="locationIds"
+                        value={loc.id}
+                        checked={selectedLocationIds.includes(loc.id)}
+                        onChange={(e) =>
+                          setSelectedLocationIds((prev) =>
+                            e.target.checked ? [...prev, loc.id] : prev.filter((id) => id !== loc.id)
+                          )
+                        }
+                      />
+                      {loc.label ?? loc.formatted_address ?? loc.location_type}
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
           </fieldset>
