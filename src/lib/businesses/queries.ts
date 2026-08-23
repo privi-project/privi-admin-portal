@@ -60,8 +60,20 @@ export async function listBusinesses(
   const adminClient = createAdminClient();
   if (!adminClient) return [];
 
+  // business_locations!business_locations_business_id_fkey (not the bare
+  // "business_locations(...)" this used to be) — REAL BUG FOUND AND FIXED
+  // 2026-08-23: adding featured_locations (business_id -> businesses.id
+  // AND location_id -> business_locations.id) gave PostgREST a SECOND,
+  // indirect path from businesses to business_locations, on top of the
+  // existing direct one. With two candidate relationships it can no
+  // longer guess which one "business_locations(count)" means and now
+  // refuses the whole query (PGRST201) — which is what took every
+  // business off the admin portal's list page. Every other embed of
+  // business_locations under businesses (app's fetchBusinesses/
+  // fetchBusinessDetail/fetchBusinessPins) had the exact same latent
+  // break and needed the same fix.
   let query = adminClient.from("businesses").select(
-    "*, business_categories(category:categories(id, slug, label)), business_locations(count)",
+    "*, business_categories(category:categories(id, slug, label)), business_locations!business_locations_business_id_fkey(count)",
   );
 
   if (filters.q) {
