@@ -15,6 +15,16 @@ export type ActivateFeaturedInput = {
   amountCharged: number;
   adminId: string;
   adminEmail: string;
+  // Optional (2026-08-23): which of the business's locations this term
+  // actually covers, for founders who charge per-location. Omitted by the
+  // Featured Payments "mark paid & activate" one-click path (that flow has
+  // no location picker of its own) — omitting leaves the business's
+  // existing featured_location_scope/featured_locations untouched rather
+  // than silently resetting them, so a founder who already set specific
+  // locations via the business edit page isn't overwritten by a later
+  // invoice payment confirmation for the same term.
+  locationScope?: "all" | "selected";
+  locationIds?: string[];
 };
 
 export type ActivateFeaturedResult = { error?: string };
@@ -30,7 +40,17 @@ export type ActivateFeaturedResult = { error?: string };
 export async function activateFeaturedPlacement(
   input: ActivateFeaturedInput,
 ): Promise<ActivateFeaturedResult> {
-  const { businessId, businessName, tier, durationMonths, amountCharged, adminId, adminEmail } = input;
+  const {
+    businessId,
+    businessName,
+    tier,
+    durationMonths,
+    amountCharged,
+    adminId,
+    adminEmail,
+    locationScope,
+    locationIds,
+  } = input;
 
   if (tier === "global") {
     const activeGlobal = await listActiveGlobalFeatured(businessId);
@@ -59,17 +79,28 @@ export async function activateFeaturedPlacement(
   const expires = new Date(now);
   expires.setMonth(expires.getMonth() + durationMonths);
 
-  const { error } = await adminClient
-    .from("businesses")
-    .update({
-      featured_level: tier,
-      featured_at: now.toISOString(),
-      featured_expires_at: expires.toISOString(),
-      updated_at: now.toISOString(),
-    })
-    .eq("id", businessId);
+  const update: Record<string, unknown> = {
+    featured_level: tier,
+    featured_at: now.toISOString(),
+    featured_expires_at: expires.toISOString(),
+    updated_at: now.toISOString(),
+  };
+  if (locationScope) update.featured_location_scope = locationScope;
+
+  const { error } = await adminClient.from("businesses").update(update).eq("id", businessId);
 
   if (error) return { error: error.message };
+
+  // Only touch featured_locations when this call actually specified a
+  // scope — see the locationScope comment on ActivateFeaturedInput above.
+  if (locationScope) {
+    await adminClient.from("featured_locations").delete().eq("business_id", businessId);
+    if (locationScope === "selected" && locationIds && locationIds.length > 0) {
+      await adminClient
+        .from("featured_locations")
+        .insert(locationIds.map((locationId) => ({ business_id: businessId, location_id: locationId })));
+    }
+  }
 
   await adminClient.from("featured_history").insert({
     business_id: businessId,

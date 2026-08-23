@@ -15,6 +15,11 @@ export type Business = {
   featured_level: "none" | "category" | "global";
   featured_at: string | null;
   featured_expires_at: string | null;
+  // Which of the business's locations the current featured term actually
+  // covers — 'all' (default, unchanged prior behaviour) or 'selected'
+  // (specific sites only, see featured_locations). Same shape as offers'
+  // own location_scope.
+  featured_location_scope: "all" | "selected";
   created_at: string;
   updated_at: string;
 };
@@ -223,6 +228,24 @@ export async function getBusinessCategoryIds(businessId: string): Promise<string
     .eq("business_id", businessId);
 
   return (data ?? []).map((row) => row.category_id);
+}
+
+/**
+ * location_id list from featured_locations for a business — only
+ * meaningful when featured_location_scope is 'selected'; empty otherwise.
+ * Used to pre-check the right boxes when the Featured control re-renders
+ * (e.g. after a renew), same idea as getBusinessCategoryIds above.
+ */
+export async function getFeaturedLocationIds(businessId: string): Promise<string[]> {
+  const adminClient = createAdminClient();
+  if (!adminClient) return [];
+
+  const { data } = await adminClient
+    .from("featured_locations")
+    .select("location_id")
+    .eq("business_id", businessId);
+
+  return (data ?? []).map((row) => row.location_id);
 }
 
 export async function getBusinessCategories(

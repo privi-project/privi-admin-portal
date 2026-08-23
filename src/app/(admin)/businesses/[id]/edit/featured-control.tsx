@@ -5,6 +5,7 @@ import { setFeaturedAction, clearFeaturedAction, type FeaturedActionState } from
 import { FEATURED_DURATIONS } from "@/lib/featured-config";
 import type { Business } from "@/lib/businesses/queries";
 import { effectiveFeaturedLevel } from "@/lib/businesses/queries";
+import type { Location } from "@/lib/locations/queries";
 
 const initialState: FeaturedActionState = undefined;
 
@@ -12,10 +13,24 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function FeaturedControl({ business }: { business: Business }) {
+export function FeaturedControl({
+  business,
+  locations,
+  selectedFeaturedLocationIds,
+}: {
+  business: Business;
+  locations: Location[];
+  selectedFeaturedLocationIds: string[];
+}) {
   const setFeaturedWithId = setFeaturedAction.bind(null, business.id, business.name);
   const [state, formAction, isPending] = useActionState(setFeaturedWithId, initialState);
   const [clearing, setClearing] = useState(false);
+  // Per-location Featured pricing (2026-08-23) — for a founder who charges
+  // per site, "which locations" needs its own answer, same 'all'/
+  // 'selected' shape as offers' own location_scope. Only shown for
+  // businesses with more than one location — a single-site business has
+  // nothing to choose between.
+  const [locationScope, setLocationScope] = useState(business.featured_location_scope);
 
   const effective = effectiveFeaturedLevel(business);
   const isRaw = business.featured_level !== "none";
@@ -92,6 +107,51 @@ export function FeaturedControl({ business }: { business: Business }) {
             </select>
           </label>
         </div>
+
+        {locations.length > 1 && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm">Locations covered</legend>
+            <div className="flex flex-col gap-1 rounded-lg border border-border-hairline p-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="featured_location_scope"
+                  value="all"
+                  checked={locationScope === "all"}
+                  onChange={() => setLocationScope("all")}
+                />
+                All locations
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="featured_location_scope"
+                  value="selected"
+                  checked={locationScope === "selected"}
+                  onChange={() => setLocationScope("selected")}
+                />
+                Selected locations only
+              </label>
+            </div>
+
+            {locationScope === "selected" && (
+              <div className="grid grid-cols-1 gap-1 rounded-lg border border-border-hairline p-3">
+                {locations.map((loc) => (
+                  <label key={loc.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="locationIds"
+                      value={loc.id}
+                      defaultChecked={selectedFeaturedLocationIds.includes(loc.id)}
+                    />
+                    {loc.label ?? loc.formatted_address ?? loc.location_type}
+                  </label>
+                ))}
+              </div>
+            )}
+          </fieldset>
+        )}
+
         <label className="flex flex-col gap-1 text-sm">
           Amount charged (£)
           <input

@@ -29,10 +29,16 @@ export async function setFeaturedAction(
   const tier = String(formData.get("featured_level") ?? "");
   const duration = String(formData.get("duration") ?? "");
   const amountRaw = String(formData.get("amount_charged") ?? "").trim();
+  const locationScope = String(formData.get("featured_location_scope") ?? "all");
+  const locationIds = formData.getAll("locationIds").map(String);
 
   if (!FEATURED_TIERS.includes(tier)) return { error: "Select a tier." };
   const validDurations = FEATURED_DURATIONS.map((d) => d.value) as string[];
   if (!validDurations.includes(duration)) return { error: "Select a duration." };
+  if (!["all", "selected"].includes(locationScope)) return { error: "Invalid location scope." };
+  if (locationScope === "selected" && locationIds.length === 0) {
+    return { error: "Select at least one location, or switch to \"All locations\"." };
+  }
 
   // Founder's explicit policy: featured placement is never free. Required
   // here (not just a nullable DB column) so the accounting ledger below
@@ -50,6 +56,8 @@ export async function setFeaturedAction(
     amountCharged: amount,
     adminId: session.userId,
     adminEmail: session.email,
+    locationScope: locationScope as "all" | "selected",
+    locationIds,
   });
 
   if (result.error) return result;
@@ -71,9 +79,14 @@ export async function clearFeaturedAction(businessId: string, businessName: stri
       featured_level: "none",
       featured_at: null,
       featured_expires_at: null,
+      featured_location_scope: "all",
       updated_at: new Date().toISOString(),
     })
     .eq("id", businessId);
+
+  // Clear the location selection too — otherwise it'd silently carry over
+  // and pre-check the same boxes on a future, unrelated term.
+  await adminClient.from("featured_locations").delete().eq("business_id", businessId);
 
   await logActivity({
     adminId: session.userId,

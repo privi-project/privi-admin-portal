@@ -851,3 +851,41 @@ create index if not exists business_locations_city_trgm_idx
   on public.business_locations using gin (city gin_trgm_ops);
 create index if not exists categories_label_trgm_idx
   on public.categories using gin (label gin_trgm_ops);
+
+-- Per-location Featured pricing (2026-08-23). Founder invoices Featured
+-- Placement per site for a multi-location business (e.g. 10 branches ×
+-- rate), so the admin needs to record WHICH of a business's locations are
+-- actually the featured ones, not just a business-wide flag. Mirrors
+-- offer_locations/notification_locations exactly (same shape, same
+-- reasoning) — featured_location_scope is the businesses-row equivalent
+-- of offers.location_scope ('all' | 'selected'; no online/national/
+-- regional here, those are offer-redemption concepts, not applicable to
+-- Featured). Both live on the business's CURRENT term, same as
+-- featured_level/featured_at/featured_expires_at — activateFeaturedPlacement
+-- and clearFeaturedAction (src/lib/featured/activate.ts,
+-- src/app/(admin)/featured/actions.ts) reset them on every renew/clear, the
+-- same as those columns, so a stale selection never leaks into an
+-- unrelated later term.
+alter table public.businesses
+  add column if not exists featured_location_scope text not null default 'all'
+    check (featured_location_scope in ('all', 'selected'));
+
+create table if not exists public.featured_locations (
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  location_id uuid not null references public.business_locations(id) on delete cascade,
+  primary key (business_id, location_id)
+);
+
+alter table public.featured_locations enable row level security;
+
+create policy "Anyone can view featured_locations for featured businesses"
+  on public.featured_locations for select
+  using (
+    exists (
+      select 1 from public.businesses b
+      where b.id = featured_locations.business_id and b.featured_level <> 'none'
+    )
+  );
+
+create index if not exists featured_locations_business_id_idx
+  on public.featured_locations (business_id);
