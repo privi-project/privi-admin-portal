@@ -776,3 +776,78 @@ alter table public.featured_payment_requests enable row level security;
 
 create index if not exists featured_payment_requests_status_idx
   on public.featured_payment_requests (status);
+
+-- App search: fuzzy/typo tolerance (2026-08-23) — the App's search bar
+-- (HomeScreen.tsx) matches business name, its own admin-tagged
+-- search_keywords, the town of any of its active locations, and its
+-- category's label. Exact substring matching already covers "does the
+-- term appear somewhere in there" (unchanged, still the app's own first
+-- pass); this adds a real typo-tolerance layer on top — e.g. "helth"
+-- still finding "Health & Fitness" — using pg_trgm's word_similarity(),
+-- built specifically for "does this short search term approximately
+-- match a WORD within a longer field," unlike plain trigram
+-- similarity() which compares whole-string closeness and penalises
+-- length mismatches (a 4-letter term against a 20-letter business name
+-- would score low even for an exact substring match).
+--
+-- Deliberately does NOT attempt synonym matching ("car" finding
+-- "Automotive," "shops" finding "Retail") — fuzzy matching only closes
+-- typo-distance between similar-LOOKING words, it can't connect two
+-- genuinely different words that happen to mean the same thing. That's
+-- what businesses.search_keywords already exists for, per-business (tag
+-- a business "car, vehicle, motor" and "car" finds it) — confirmed with
+-- the founder 2026-08-23 to rely on that rather than build a separate
+-- category-level synonym feature for now.
+--
+-- Runs as the calling role (no security definer) — all four tables
+-- already have public "Anyone can view..." SELECT policies (same ones
+-- the App's own direct queries already rely on), so this needs no
+-- elevated privilege.
+--
+-- 0.4 word_similarity threshold is a reasonable starting point (0=no
+-- match, 1=exact), not a final tuned value — same "best-effort, revisit
+-- once seen for real" caveat as every other exact numeric choice in this
+-- codebase. Loosen it if real typos are still slipping through; tighten
+-- it if irrelevant results start showing up.
+create extension if not exists pg_trgm;
+
+create or replace function public.search_businesses(search_term text)
+returns table (business_id uuid)
+language sql
+stable
+as $$
+  select distinct b.id as business_id
+  from public.businesses b
+  left join public.business_locations bl
+    on bl.business_id = b.id and bl.status = 'active'
+  left join public.business_categories bc
+    on bc.business_id = b.id
+  left join public.categories c
+    on c.id = bc.category_id
+  where b.status = 'active'
+    and (
+      b.name ilike '%' || search_term || '%'
+      or b.search_keywords ilike '%' || search_term || '%'
+      or bl.city ilike '%' || search_term || '%'
+      or c.label ilike '%' || search_term || '%'
+      or word_similarity(search_term, b.name) > 0.4
+      or word_similarity(search_term, coalesce(b.search_keywords, '')) > 0.4
+      or word_similarity(search_term, coalesce(bl.city, '')) > 0.4
+      or word_similarity(search_term, coalesce(c.label, '')) > 0.4
+    );
+$$;
+
+grant execute on function public.search_businesses(text) to anon, authenticated;
+
+-- Trigram indexes — not critical at current business counts (fetchBusinesses'
+-- own comment already notes "modest number of businesses expected at
+-- launch"), but cheap to add now and will matter once the table grows
+-- large enough for a sequential scan per search to be felt.
+create index if not exists businesses_name_trgm_idx
+  on public.businesses using gin (name gin_trgm_ops);
+create index if not exists businesses_search_keywords_trgm_idx
+  on public.businesses using gin (search_keywords gin_trgm_ops);
+create index if not exists business_locations_city_trgm_idx
+  on public.business_locations using gin (city gin_trgm_ops);
+create index if not exists categories_label_trgm_idx
+  on public.categories using gin (label gin_trgm_ops);
