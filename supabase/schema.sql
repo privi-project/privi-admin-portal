@@ -914,3 +914,11 @@ create policy "Anyone can view active season banners"
     and (starts_at is null or starts_at <= current_date)
     and (ends_at is null or ends_at >= current_date)
   );
+
+-- App Data → Settings gains one more app-link field, same pattern as
+-- subscription_terms_url/member_rules_url above — the App's Referrals
+-- screen (website/supabase/schema.sql owns the actual referral
+-- programme tables/logic) links out to this URL for the full terms,
+-- exactly like every other legal document the App itself never hosts.
+alter table public.system_settings
+  add column if not exists referral_terms_url text;

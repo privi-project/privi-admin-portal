@@ -87,6 +87,7 @@ export function SettingsForm({ settings }: { settings: SystemSettings }) {
         <Field name="terms_url" label="Terms & Conditions URL" defaultValue={settings.terms_url} />
         <Field name="subscription_terms_url" label="Subscription Terms URL" defaultValue={settings.subscription_terms_url} />
         <Field name="member_rules_url" label="Member Rules URL" defaultValue={settings.member_rules_url} />
+        <Field name="referral_terms_url" label="Referral Programme Terms URL" defaultValue={settings.referral_terms_url} />
         <Field name="app_store_url" label="App Store URL" defaultValue={settings.app_store_url} />
         <Field name="google_play_url" label="Google Play URL" defaultValue={settings.google_play_url} />
       </section>

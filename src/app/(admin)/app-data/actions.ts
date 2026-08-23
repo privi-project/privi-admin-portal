@@ -36,6 +36,7 @@ export async function updateSystemSettingsAction(
       terms_url: textOrNull(formData, "terms_url"),
       subscription_terms_url: textOrNull(formData, "subscription_terms_url"),
       member_rules_url: textOrNull(formData, "member_rules_url"),
+      referral_terms_url: textOrNull(formData, "referral_terms_url"),
       app_store_url: textOrNull(formData, "app_store_url"),
       google_play_url: textOrNull(formData, "google_play_url"),
       support_email: textOrNull(formData, "support_email"),
