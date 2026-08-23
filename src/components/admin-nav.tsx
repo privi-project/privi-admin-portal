@@ -9,14 +9,19 @@ import { NavLink } from "@/components/nav-link";
 // 2026-08-19 — post-v1, once featured placement became a real paid
 // product needing its own management view rather than a per-business
 // setting.
+// Reordered 2026-08-23 for a clearer functional flow: overview, then the
+// business pipeline in the order it actually happens (application ->
+// live business -> optional paid Featured), then the member pipeline
+// (member -> their billing -> their referrals), then communication,
+// audit and config. Purely a reorder — no items added or removed.
 const NAV_ITEMS = [
   { href: "/home", label: "Dashboard" },
-  { href: "/businesses", label: "Businesses" },
   { href: "/business-applications", label: "Applications" },
+  { href: "/businesses", label: "Businesses" },
   { href: "/featured", label: "Featured" },
   { href: "/members", label: "Members" },
-  { href: "/referrals", label: "Referrals" },
   { href: "/subscriptions", label: "Subscriptions" },
+  { href: "/referrals", label: "Referrals" },
   { href: "/notifications", label: "Notifications" },
   { href: "/activity-log", label: "Activity Log" },
   { href: "/app-data", label: "App Data" },
@@ -42,10 +47,15 @@ export function AdminNav({
   newApplicationsCount = 0,
   actionCentreCount = 0,
   unpaidFeaturedCount = 0,
+  onNavigate,
 }: {
   newApplicationsCount?: number;
   actionCentreCount?: number;
   unpaidFeaturedCount?: number;
+  // Fired when a nav link is clicked — lets the mobile drawer (AdminShell)
+  // close itself on navigate, without AdminNav needing to know it's ever
+  // rendered inside a drawer at all.
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const badges = navBadgeCounts(newApplicationsCount, actionCentreCount, unpaidFeaturedCount);
@@ -59,6 +69,7 @@ export function AdminNav({
           <NavLink
             key={item.href}
             href={item.href}
+            onClick={onNavigate}
             className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium ${
               isActive ? "privi-gold-border border bg-teal text-ivory [--gold-border-bg:var(--color-teal)]" : "text-charcoal hover:bg-border-hairline-2"
             }`}

@@ -1,6 +1,6 @@
 import { requireAdminSession } from "@/lib/auth/session";
 import { NavigationBlockerProvider } from "@/lib/navigation-blocker";
-import { AdminNav } from "@/components/admin-nav";
+import { AdminShell } from "@/components/admin-shell";
 import { countNewApplications } from "@/lib/business-applications/queries";
 import { getActionCentreCount } from "@/lib/dashboard/queries";
 import { countUnpaidFeaturedPayments } from "@/lib/featured/payment-queries";
@@ -22,27 +22,21 @@ export default async function AdminLayout({
 
   return (
     <NavigationBlockerProvider>
-      <div className="flex min-h-screen">
-        <aside className="flex w-56 shrink-0 flex-col border-r border-border-hairline bg-white">
-          <div className="px-4 py-4 text-sm font-medium">Privi Admin</div>
-          <AdminNav
-            newApplicationsCount={newApplicationsCount}
-            actionCentreCount={actionCentreCount}
-            unpaidFeaturedCount={unpaidFeaturedCount}
-          />
-        </aside>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-border-hairline px-6 py-3 text-sm">
-            <span>Signed in as {session.email}</span>
-            <form action={signOutAction}>
-              <button type="submit" className="text-gold">
-                Log out
-              </button>
-            </form>
-          </header>
-          <main className="min-w-0 flex-1">{children}</main>
-        </div>
-      </div>
+      <AdminShell
+        newApplicationsCount={newApplicationsCount}
+        actionCentreCount={actionCentreCount}
+        unpaidFeaturedCount={unpaidFeaturedCount}
+        signedInAsEmail={session.email}
+        logoutForm={
+          <form action={signOutAction}>
+            <button type="submit" className="shrink-0 text-gold">
+              Log out
+            </button>
+          </form>
+        }
+      >
+        {children}
+      </AdminShell>
     </NavigationBlockerProvider>
   );
 }
