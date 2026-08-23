@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/business-applications", label: "Applications" },
   { href: "/featured", label: "Featured" },
   { href: "/members", label: "Members" },
+  { href: "/referrals", label: "Referrals" },
   { href: "/subscriptions", label: "Subscriptions" },
   { href: "/notifications", label: "Notifications" },
   { href: "/activity-log", label: "Activity Log" },

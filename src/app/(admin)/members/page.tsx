@@ -36,9 +36,6 @@ export default async function MembersPage({
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-medium">Members</h1>
         <div className="flex items-center gap-3">
-          <NavLink href="/referrals" className="text-sm text-gold">
-            Referrals
-          </NavLink>
           <a
             href={`/members/export.csv${exportQuery ? `?${exportQuery}` : ""}`}
             className="rounded-lg border border-border-hairline px-4 py-2 text-sm font-medium"
