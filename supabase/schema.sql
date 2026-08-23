@@ -889,3 +889,28 @@ create policy "Anyone can view featured_locations for featured businesses"
 
 create index if not exists featured_locations_business_id_idx
   on public.featured_locations (business_id);
+
+-- Season banner scheduling (2026-08-23). Previously the only control was
+-- a manual is_active on/off — no way to pre-load the year's recurring
+-- dates (Easter, Mother's Day, Father's Day, Christmas...) and have each
+-- one switch itself on and off automatically. starts_at/ends_at are
+-- optional (a banner with neither behaves exactly as before — on
+-- whenever is_active is true, until someone flips it off by hand).
+-- Whether a banner is CURRENTLY effectively active is computed here in
+-- the RLS policy itself, the same "check against now() at read time"
+-- approach featured_expires_at already uses — no scheduled job needed,
+-- and the App's own query (src/services/banners.ts, unchanged) doesn't
+-- need to know anything changed.
+alter table public.season_banners
+  add column if not exists starts_at date,
+  add column if not exists ends_at date;
+
+drop policy if exists "Anyone can view active season banners" on public.season_banners;
+
+create policy "Anyone can view active season banners"
+  on public.season_banners for select
+  using (
+    is_active = true
+    and (starts_at is null or starts_at <= current_date)
+    and (ends_at is null or ends_at >= current_date)
+  );

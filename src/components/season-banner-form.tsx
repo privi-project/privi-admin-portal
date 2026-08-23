@@ -18,6 +18,8 @@ type SeasonBannerFormProps = {
     message?: string;
     action_type?: string;
     action_url?: string | null;
+    starts_at?: string | null;
+    ends_at?: string | null;
   };
 };
 
@@ -85,6 +87,42 @@ export function SeasonBannerForm({
           className="rounded-lg border border-border-hairline px-3 py-2"
         />
       </label>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="text-sm">Schedule (optional)</legend>
+        <div className="grid grid-cols-2 gap-3 rounded-lg border border-border-hairline p-3">
+          <label className="flex flex-col gap-1 text-sm">
+            Starts
+            <input
+              type="date"
+              name="starts_at"
+              defaultValue={initial?.starts_at ?? ""}
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Ends
+            <input
+              type="date"
+              name="ends_at"
+              defaultValue={initial?.ends_at ?? ""}
+              className="rounded-lg border border-border-hairline px-3 py-2"
+            />
+          </label>
+        </div>
+        <p className="-mt-1 text-xs text-muted-dark">
+          Leave both blank for a banner you&apos;ll switch on and off by
+          hand from the list page, same as before. Set either date and
+          saving arms it automatically — it goes live and ends itself on
+          those dates with nothing further to click. Prep this
+          year&apos;s whole run (Easter, Mother&apos;s Day, Christmas…) in
+          one sitting and each one switches itself on and off in turn as
+          its dates come round — next year, duplicate each one and move
+          the dates forward, rather than starting from scratch. You can
+          still deactivate an armed banner from the list page at any time
+          as an override.
+        </p>
+      </fieldset>
 
       <fieldset className="flex flex-col gap-2">
         <legend className="text-sm">When tapped</legend>

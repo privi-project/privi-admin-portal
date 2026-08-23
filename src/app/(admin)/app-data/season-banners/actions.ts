@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminSession } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
 import { isRequired } from "@/lib/validation";
+import { getSeasonBannerCategoryIds } from "@/lib/season-banners/queries";
 
 export type SeasonBannerFormState = { error?: string } | undefined;
 
@@ -17,6 +18,8 @@ function readBannerFields(formData: FormData) {
     message: String(formData.get("message") ?? "").trim(),
     action_type: String(formData.get("action_type") ?? "none"),
     action_url: String(formData.get("action_url") ?? "").trim() || null,
+    starts_at: String(formData.get("starts_at") ?? "").trim() || null,
+    ends_at: String(formData.get("ends_at") ?? "").trim() || null,
   };
 }
 
@@ -26,6 +29,9 @@ function validateBannerFields(fields: ReturnType<typeof readBannerFields>): stri
   if (!ACTION_TYPES.includes(fields.action_type)) return "Invalid action type.";
   if (fields.action_type === "external_link" && !fields.action_url) {
     return "Enter a URL for the link action.";
+  }
+  if (fields.starts_at && fields.ends_at && fields.starts_at > fields.ends_at) {
+    return "The start date can't be after the end date.";
   }
   return null;
 }
@@ -53,9 +59,18 @@ export async function createSeasonBannerAction(
   const adminClient = createAdminClient();
   if (!adminClient) throw new Error("Admin Supabase client is not configured.");
 
+  // A banner given a start/end date is, by definition, being scheduled to
+  // go live automatically — defaulting is_active to true for that case is
+  // what makes "prep the whole year and forget it" actually true, rather
+  // than needing a second manual Activate click per banner on top of the
+  // dates already set. A banner with no dates keeps the old behaviour
+  // (starts inactive, switched on by hand from the list page) since there's
+  // no schedule to hand control to.
+  const isScheduled = !!(fields.starts_at || fields.ends_at);
+
   const { data, error } = await adminClient
     .from("season_banners")
-    .insert({ ...fields, created_by: session.userId })
+    .insert({ ...fields, is_active: isScheduled, created_by: session.userId })
     .select("id")
     .single();
 
@@ -114,6 +129,61 @@ export async function updateSeasonBannerAction(
 
   revalidatePath("/app-data/season-banners");
   redirect("/app-data/season-banners");
+}
+
+// Same idea as businesses/[id]/locations' duplicateLocationAction — next
+// year, copy this year's Christmas/Easter/etc. banner rather than
+// re-typing it, then just move the dates forward. Never clone straight
+// into an armed/dated state: the copy starts inactive with no dates, so
+// the founder reviews and sets next year's window deliberately rather
+// than a stale date range silently going live unedited.
+export async function duplicateSeasonBannerAction(bannerId: string) {
+  const session = await requireAdminSession();
+  const adminClient = createAdminClient();
+  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
+
+  const { data: original } = await adminClient
+    .from("season_banners")
+    .select("title, message, action_type, action_url")
+    .eq("id", bannerId)
+    .maybeSingle();
+
+  if (!original) return;
+
+  const categoryIds = await getSeasonBannerCategoryIds(bannerId);
+
+  const { data: copy, error } = await adminClient
+    .from("season_banners")
+    .insert({
+      ...original,
+      title: `${original.title} (copy)`,
+      is_active: false,
+      starts_at: null,
+      ends_at: null,
+      created_by: session.userId,
+    })
+    .select("id")
+    .single();
+
+  if (error || !copy) return;
+
+  if (original.action_type === "categories" && categoryIds.length > 0) {
+    await adminClient
+      .from("season_banner_categories")
+      .insert(categoryIds.map((categoryId) => ({ banner_id: copy.id, category_id: categoryId })));
+  }
+
+  await logActivity({
+    adminId: session.userId,
+    adminEmail: session.email,
+    action: "duplicated",
+    entityType: "banner",
+    entityId: copy.id,
+    entityLabel: `Season banner: ${original.title}`,
+  });
+
+  revalidatePath("/app-data/season-banners");
+  redirect(`/app-data/season-banners/${copy.id}/edit`);
 }
 
 export async function toggleSeasonBannerActiveAction(id: string, title: string, nextActive: boolean) {

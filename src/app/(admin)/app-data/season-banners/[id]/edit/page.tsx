@@ -43,6 +43,8 @@ export default async function EditSeasonBannerPage({
           message: banner.message,
           action_type: banner.action_type,
           action_url: banner.action_url,
+          starts_at: banner.starts_at,
+          ends_at: banner.ends_at,
         }}
       />
     </div>
