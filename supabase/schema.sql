@@ -922,3 +922,27 @@ create policy "Anyone can view active season banners"
 -- exactly like every other legal document the App itself never hosts.
 alter table public.system_settings
   add column if not exists referral_terms_url text;
+
+-- 2026-08-24: the App's own links (Help Centre, Referral Terms, etc.)
+-- were hardcoded in its source instead of reading these fields live —
+-- a Settings change here had no effect in the App until a new build.
+-- system_settings itself stays service-role-only (session_timeout_
+-- minutes/max_failed_login_attempts/lockout_minutes are Admin Portal
+-- security config, never meant to be public), so a narrow view exposes
+-- just the fields the App is actually allowed to read — a plain view
+-- (not security_invoker) runs as its owner, which is how it can read
+-- through system_settings' RLS while the App's own anon key still can't
+-- query the base table directly.
+create or replace view public.app_links as
+select
+  help_faq_url,
+  privacy_policy_url,
+  terms_url,
+  subscription_terms_url,
+  member_rules_url,
+  referral_terms_url,
+  support_email
+from public.system_settings
+where id = 1;
+
+grant select on public.app_links to anon, authenticated;
