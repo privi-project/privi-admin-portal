@@ -67,7 +67,21 @@ export default async function MemberDetailPage({
 
         <section className="flex flex-col gap-3 rounded-2xl border border-border-hairline bg-white p-6">
           <h2 className="text-sm font-medium text-muted-dark">Subscription</h2>
-          {member.is_complimentary ? (
+          {member.is_complimentary && member.stripe_customer_id ? (
+            // 2026-08-26: a complimentary member can now set up payment in
+            // advance via the app (continue-membership), ahead of their
+            // complimentary_expires_at date — this is why is_complimentary
+            // and stripe_customer_id can both be set at once, which used
+            // to be impossible. Nothing to manage here yet (no real
+            // subscription exists until the trial converts), just make
+            // that state legible rather than confusing.
+            <p className="text-sm text-muted-dark">
+              Payment already set up — this member&apos;s membership will
+              convert automatically and be charged for the first time on
+              their complimentary expiry date (see below). Nothing to
+              manage here until then.
+            </p>
+          ) : member.is_complimentary ? (
             <p className="text-sm text-muted-dark">
               No Stripe subscription — this member has complimentary access
               instead (see below).
