@@ -85,9 +85,11 @@ export function SettingsForm({ settings }: { settings: SystemSettings }) {
         <Field name="help_faq_url" label="Help & FAQ URL" defaultValue={settings.help_faq_url} />
         <Field name="privacy_policy_url" label="Privacy Policy URL" defaultValue={settings.privacy_policy_url} />
         <Field name="terms_url" label="Terms & Conditions URL" defaultValue={settings.terms_url} />
-        <Field name="subscription_terms_url" label="Subscription Terms URL" defaultValue={settings.subscription_terms_url} />
-        <Field name="member_rules_url" label="Member Rules URL" defaultValue={settings.member_rules_url} />
-        <Field name="referral_terms_url" label="Referral Programme Terms URL" defaultValue={settings.referral_terms_url} />
+        {/* Subscription Terms / Member Rules / Referral Programme Terms URL
+            fields removed 2026-08-26 — those documents were folded into
+            Terms & Conditions as sections, so there's nothing separate left
+            to point a URL at. The underlying system_settings columns are
+            left in place (harmless, unused) rather than migrated away. */}
         <Field name="app_store_url" label="App Store URL" defaultValue={settings.app_store_url} />
         <Field name="google_play_url" label="Google Play URL" defaultValue={settings.google_play_url} />
       </section>
