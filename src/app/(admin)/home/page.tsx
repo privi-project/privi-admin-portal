@@ -270,6 +270,16 @@ export default async function DashboardPage({
               meta: new Date(b.expired_at).toLocaleDateString(),
             }))}
           />
+          <ActionList
+            title="Businesses with flagged offer reports"
+            emptyLabel="Nothing flagged."
+            items={summary.actionCentre.flaggedOfferBusinesses.map((b) => ({
+              key: b.business_id,
+              href: "/offer-reports",
+              label: b.business_name,
+              meta: `${b.open_count} open`,
+            }))}
+          />
         </div>
       </section>
 

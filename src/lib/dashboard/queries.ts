@@ -5,6 +5,7 @@ import { listAllOffers, effectiveStatus, type OfferWithBusinessName } from "@/li
 import { getSubscriptionOverview, getAllTimeRevenueCollected } from "@/lib/subscriptions/queries";
 import { getSystemSettings } from "@/lib/system-settings/queries";
 import { listActivity, type ActivityLogRow } from "@/lib/activity/queries";
+import { listFlaggedBusinesses, type FlaggedBusiness } from "@/lib/offer-reports/queries";
 
 export type DashboardSummary = {
   members: {
@@ -29,29 +30,35 @@ export type DashboardSummary = {
     deletionRequests: { id: string; name: string; requestedAt: string }[];
     featuredExpiringSoon: { id: string; name: string; expires_at: string }[];
     featuredLapsed: { id: string; name: string; expired_at: string }[];
+    flaggedOfferBusinesses: FlaggedBusiness[];
   };
   recentActivity: ActivityLogRow[];
 };
 
 export async function getDashboardSummary(periodDays: number): Promise<DashboardSummary> {
+  // system_settings fetched up front (not inside the batch below) — the
+  // flagged-businesses threshold lives on it and is needed to kick off
+  // that lookup in the same parallel batch as everything else.
+  const systemSettings = await getSystemSettings();
+
   const [
     members,
     businesses,
     offers,
     subscriptionOverview,
-    systemSettings,
     recentActivity,
     featuredHistory,
     totalRevenueCollectedGbp,
+    flaggedOfferBusinesses,
   ] = await Promise.all([
     listMembers(),
     listBusinesses(),
     listAllOffers(),
     getSubscriptionOverview(),
-    getSystemSettings(),
     listActivity({ limit: 10 }),
     listFeaturedHistory(),
     getAllTimeRevenueCollected(),
+    listFlaggedBusinesses(systemSettings.offer_report_flag_threshold),
   ]);
 
   const periodStart = new Date();
@@ -135,6 +142,7 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
       deletionRequests,
       featuredExpiringSoon,
       featuredLapsed,
+      flaggedOfferBusinesses,
     },
     recentActivity,
   };
@@ -146,17 +154,19 @@ export async function getDashboardSummary(periodDays: number): Promise<Dashboard
  * Stripe (MRR, refunds, all-time revenue) and would add a live Stripe
  * round-trip to every single admin page load via the layout. Everything
  * the Action Centre actually flags (expiring/expired/scheduled offers,
- * past-due members, deletion requests, featured expiring/lapsed) is
- * derivable from Supabase alone — past-due status lives on `profiles`
+ * past-due members, deletion requests, featured expiring/lapsed,
+ * flagged offer-report businesses) is derivable from Supabase alone —
+ * past-due status lives on `profiles`
  * directly, no Stripe lookup needed for the count. Kept in sync by hand
  * with the equivalent block in getDashboardSummary() above.
  */
 export async function getActionCentreCount(): Promise<number> {
-  const [members, businesses, offers, systemSettings] = await Promise.all([
+  const systemSettings = await getSystemSettings();
+  const [members, businesses, offers, flaggedOfferBusinesses] = await Promise.all([
     listMembers(),
     listBusinesses(),
     listAllOffers(),
-    getSystemSettings(),
+    listFlaggedBusinesses(systemSettings.offer_report_flag_threshold),
   ]);
 
   const warningDays = systemSettings.default_expiry_warning_days;
@@ -195,6 +205,7 @@ export async function getActionCentreCount(): Promise<number> {
     pastDueMembersCount +
     deletionRequestsCount +
     featuredExpiringSoonCount +
-    featuredLapsedCount
+    featuredLapsedCount +
+    flaggedOfferBusinesses.length
   );
 }

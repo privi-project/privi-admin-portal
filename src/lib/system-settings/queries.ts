@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type SystemSettings = {
   default_expiry_warning_days: number;
+  offer_report_flag_threshold: number;
   help_faq_url: string | null;
   privacy_policy_url: string | null;
   terms_url: string | null;
@@ -20,6 +21,7 @@ export type SystemSettings = {
 
 const DEFAULTS: SystemSettings = {
   default_expiry_warning_days: 7,
+  offer_report_flag_threshold: 5,
   help_faq_url: null,
   privacy_policy_url: null,
   terms_url: null,
@@ -43,7 +45,7 @@ export async function getSystemSettings(): Promise<SystemSettings> {
   const { data } = await adminClient
     .from("system_settings")
     .select(
-      "default_expiry_warning_days, help_faq_url, privacy_policy_url, terms_url, subscription_terms_url, member_rules_url, referral_terms_url, app_store_url, google_play_url, support_email, business_contact_email, privacy_contact_email, session_timeout_minutes, max_failed_login_attempts, lockout_minutes",
+      "default_expiry_warning_days, offer_report_flag_threshold, help_faq_url, privacy_policy_url, terms_url, subscription_terms_url, member_rules_url, referral_terms_url, app_store_url, google_play_url, support_email, business_contact_email, privacy_contact_email, session_timeout_minutes, max_failed_login_attempts, lockout_minutes",
     )
     .eq("id", 1)
     .maybeSingle();

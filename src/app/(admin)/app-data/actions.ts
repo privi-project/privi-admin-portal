@@ -24,6 +24,12 @@ export async function updateSystemSettingsAction(
     return { error: "Expiry warning period must be a whole number of days (1 or more)." };
   }
 
+  const reportThresholdRaw = String(formData.get("offer_report_flag_threshold") ?? "");
+  const reportThreshold = Number(reportThresholdRaw);
+  if (!Number.isInteger(reportThreshold) || reportThreshold < 1) {
+    return { error: "Offer report flag threshold must be a whole number (1 or more)." };
+  }
+
   const adminClient = createAdminClient();
   if (!adminClient) throw new Error("Admin Supabase client is not configured.");
 
@@ -31,6 +37,7 @@ export async function updateSystemSettingsAction(
     .from("system_settings")
     .update({
       default_expiry_warning_days: expiryDays,
+      offer_report_flag_threshold: reportThreshold,
       help_faq_url: textOrNull(formData, "help_faq_url"),
       privacy_policy_url: textOrNull(formData, "privacy_policy_url"),
       terms_url: textOrNull(formData, "terms_url"),

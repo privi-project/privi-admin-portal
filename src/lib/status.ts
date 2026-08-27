@@ -37,6 +37,9 @@ export const STATUS_TONE: Record<
   // Featured payment tracking-specific
   paid: "success",
   unpaid: "warning",
+  // Offer report-specific
+  open: "warning",
+  resolved: "success",
 };
 
 export function toneForStatus(status: string) {

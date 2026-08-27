@@ -11,6 +11,7 @@ export function AdminShell({
   newApplicationsCount,
   actionCentreCount,
   unpaidFeaturedCount,
+  openOfferReportsCount,
   signedInAsEmail,
   logoutForm,
   children,
@@ -18,6 +19,7 @@ export function AdminShell({
   newApplicationsCount: number;
   actionCentreCount: number;
   unpaidFeaturedCount: number;
+  openOfferReportsCount: number;
   signedInAsEmail: string;
   logoutForm: React.ReactNode;
   children: React.ReactNode;
@@ -44,6 +46,7 @@ export function AdminShell({
           newApplicationsCount={newApplicationsCount}
           actionCentreCount={actionCentreCount}
           unpaidFeaturedCount={unpaidFeaturedCount}
+          openOfferReportsCount={openOfferReportsCount}
           onNavigate={() => setIsOpen(false)}
         />
       </aside>
