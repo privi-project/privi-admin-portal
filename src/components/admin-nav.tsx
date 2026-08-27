@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/business-applications", label: "Applications" },
   { href: "/businesses", label: "Businesses" },
   { href: "/featured", label: "Featured" },
+  { href: "/offer-reports", label: "Offer Reports" },
   { href: "/members", label: "Members" },
   { href: "/subscriptions", label: "Subscriptions" },
   { href: "/referrals", label: "Referrals" },
@@ -35,11 +36,13 @@ function navBadgeCounts(
   newApplicationsCount: number,
   actionCentreCount: number,
   unpaidFeaturedCount: number,
+  openOfferReportsCount: number,
 ): Record<string, number> {
   return {
     "/business-applications": newApplicationsCount,
     "/home": actionCentreCount,
     "/featured": unpaidFeaturedCount,
+    "/offer-reports": openOfferReportsCount,
   };
 }
 
@@ -47,18 +50,20 @@ export function AdminNav({
   newApplicationsCount = 0,
   actionCentreCount = 0,
   unpaidFeaturedCount = 0,
+  openOfferReportsCount = 0,
   onNavigate,
 }: {
   newApplicationsCount?: number;
   actionCentreCount?: number;
   unpaidFeaturedCount?: number;
+  openOfferReportsCount?: number;
   // Fired when a nav link is clicked — lets the mobile drawer (AdminShell)
   // close itself on navigate, without AdminNav needing to know it's ever
   // rendered inside a drawer at all.
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const badges = navBadgeCounts(newApplicationsCount, actionCentreCount, unpaidFeaturedCount);
+  const badges = navBadgeCounts(newApplicationsCount, actionCentreCount, unpaidFeaturedCount, openOfferReportsCount);
 
   return (
     <nav className="flex flex-col gap-1 p-3">

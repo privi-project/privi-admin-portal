@@ -946,3 +946,96 @@ from public.system_settings
 where id = 1;
 
 grant select on public.app_links to anon, authenticated;
+
+-- Offer misuse reporting (2026-08-27, Procedures Manual §6 follow-up).
+-- Members have no other line to Privi (see that section's "businesses
+-- only" complaint scoping) — this is the one narrow exception, and it's
+-- deliberately NOT a raw one-tap "report" button: the App only ever
+-- calls report_offer() after the member picks a specific reason from a
+-- short list, which is real friction against an idle/malicious tap.
+--
+-- No location_id here — deliberate. Redemption codes/barcodes are shown
+-- to the business with nothing else tracked around their use (founder's
+-- original design intent, so nothing ever impedes actually using a
+-- code), so there's no record of which of a multi-location business's
+-- sites a member was even at. Reports are scoped to the business as a
+-- whole, not a specific location, for the same reason there's no
+-- redemption-volume data to rate a threshold against — a flat count is
+-- what the data actually supports (founder's original "5 strikes" idea,
+-- kept as-is rather than a rate this data can't compute).
+--
+-- Service-role-only, same shape as notification_acknowledgements: no
+-- select/insert policy for anon/authenticated, the security-definer RPC
+-- below is the one sanctioned write path, and the Admin Portal (service
+-- role) is the one sanctioned reader.
+create table if not exists public.offer_reports (
+  id uuid primary key default gen_random_uuid(),
+  offer_id uuid not null references public.offers(id) on delete cascade,
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  member_id uuid not null references auth.users(id) on delete cascade,
+  reason text not null
+    check (reason in ('not_honoured', 'not_as_described', 'already_expired', 'other')),
+  note text,
+  status text not null default 'open' check (status in ('open', 'resolved')),
+  admin_notes text,
+  resolved_at timestamptz,
+  resolved_by uuid references public.admin_users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.offer_reports enable row level security;
+-- Intentionally no policies — service_role-only reads (Admin Portal),
+-- same pattern as admin_activity_log/admin_users. Writes go through
+-- report_offer() only.
+
+create index if not exists offer_reports_business_id_idx on public.offer_reports (business_id);
+create index if not exists offer_reports_status_idx on public.offer_reports (status);
+
+-- One open report per member per offer at a time — stops a single member
+-- inflating the count by tapping repeatedly (they'd have to leave and
+-- come back after a real admin review, not just retap). Only applies
+-- while status = 'open'; once resolved, the same member could report
+-- again if a genuinely new incident happened later.
+create unique index if not exists offer_reports_member_offer_open_idx
+  on public.offer_reports (member_id, offer_id) where status = 'open';
+
+create or replace function public.report_offer(
+  p_offer_id uuid,
+  p_reason text,
+  p_note text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_business_id uuid;
+begin
+  select business_id into v_business_id
+  from public.offers
+  where id = p_offer_id and status = 'active';
+
+  if v_business_id is null then
+    raise exception 'Offer not found or not active';
+  end if;
+
+  if p_reason not in ('not_honoured', 'not_as_described', 'already_expired', 'other') then
+    raise exception 'Invalid reason';
+  end if;
+
+  insert into public.offer_reports (offer_id, business_id, member_id, reason, note)
+  values (p_offer_id, v_business_id, auth.uid(), p_reason, nullif(trim(p_note), ''))
+  on conflict (member_id, offer_id) where status = 'open' do nothing;
+end;
+$$;
+grant execute on function public.report_offer(uuid, text, text) to authenticated;
+
+-- Admin-editable flag threshold, same pattern as
+-- default_expiry_warning_days — how many OPEN reports a business needs
+-- before it surfaces on the Dashboard's Action Centre as worth a look.
+-- Never an automatic suspension/removal at any count — purely a signal
+-- into the same manual review process every other complaint goes through
+-- (Procedures Manual §6 / Ops Manual §8).
+alter table public.system_settings
+  add column if not exists offer_report_flag_threshold integer not null default 5;

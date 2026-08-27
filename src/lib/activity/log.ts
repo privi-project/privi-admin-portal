@@ -17,7 +17,8 @@ export type ActivityEntityType =
   | "banner"
   | "business_application"
   | "business_application_status"
-  | "featured_payment_request";
+  | "featured_payment_request"
+  | "offer_report";
 
 export type LogActivityInput = {
   adminId: string;

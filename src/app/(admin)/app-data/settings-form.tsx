@@ -78,6 +78,18 @@ export function SettingsForm({ settings }: { settings: SystemSettings }) {
           the Dashboard. Applies only to offers that have an expiry date set
           — not related to notifications.
         </p>
+        <Field
+          name="offer_report_flag_threshold"
+          label="Offer report flag threshold"
+          defaultValue={settings.offer_report_flag_threshold}
+          type="number"
+        />
+        <p className="-mt-2 text-xs text-muted-dark">
+          How many open member reports a business needs before it&apos;s flagged
+          on the Dashboard for review. Never triggers anything automatic —
+          purely a signal into the Offer Reports list, same as every other
+          complaint.
+        </p>
       </section>
 
       <section className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-white p-6">
