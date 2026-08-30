@@ -1039,3 +1039,26 @@ grant execute on function public.report_offer(uuid, text, text) to authenticated
 -- (Procedures Manual §6 / Ops Manual §8).
 alter table public.system_settings
   add column if not exists offer_report_flag_threshold integer not null default 5;
+
+-- Pre-launch waitlist (2026-08-30). Sign-up is gated behind
+-- NEXT_PUBLIC_SIGNUP_OPEN (website/src/lib/launch.ts) until the App and
+-- Stripe are actually live — this is where /signup collects an email
+-- instead of creating a real account while that flag is off. Same
+-- public-write-only shape as business_applications: anyone can insert,
+-- nobody but service_role (Admin Portal / a future export) can read.
+create table if not exists public.waitlist_signups (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.waitlist_signups enable row level security;
+
+create policy "Anyone can join the waitlist"
+  on public.waitlist_signups for insert
+  with check (true);
+
+-- Case-insensitive uniqueness — resubmitting the same address (typos in
+-- casing aside) should never create duplicate rows to email later.
+create unique index if not exists waitlist_signups_email_lower_idx
+  on public.waitlist_signups (lower(email));
