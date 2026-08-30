@@ -93,6 +93,25 @@ export function SettingsForm({ settings }: { settings: SystemSettings }) {
       </section>
 
       <section className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-white p-6">
+        <h2 className="text-sm font-medium text-muted-dark">Membership rewards</h2>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="anniversary_rewards_enabled"
+            defaultChecked={settings.anniversary_rewards_enabled}
+            className="h-4 w-4"
+          />
+          Anniversary rewards are live
+        </label>
+        <p className="-mt-2 text-xs text-muted-dark">
+          Off by default. While off, nothing fires — no credits, no
+          emails, no notifications — regardless of how long members have
+          been paying. Only turn this on once the reward emails have been
+          reviewed and approved.
+        </p>
+      </section>
+
+      <section className="flex flex-col gap-4 rounded-2xl border border-border-hairline bg-white p-6">
         <h2 className="text-sm font-medium text-muted-dark">App links</h2>
         <Field name="help_faq_url" label="Help & FAQ URL" defaultValue={settings.help_faq_url} />
         <Field name="privacy_policy_url" label="Privacy Policy URL" defaultValue={settings.privacy_policy_url} />
