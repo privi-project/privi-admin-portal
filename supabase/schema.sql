@@ -1084,3 +1084,34 @@ alter table public.profiles
 -- threshold.
 alter table public.system_settings
   add column if not exists anniversary_rewards_enabled boolean not null default false;
+
+-- Quarterly draw (2026-08-30) — same "worth one month" discount as the
+-- anniversary reward, but a flat percentage of eligible members picked
+-- at random each quarter rather than tied to tenure. Deliberately kept
+-- out of any "raffle"/"prize"/"entered" framing in copy — a spontaneous
+-- gift, not a competition, per explicit founder instruction. Percentage
+-- is admin-editable so the founder can tune it later without a rebuild;
+-- enabled flag is OFF by default for the same "review the copy first"
+-- reason as anniversary_rewards_enabled.
+alter table public.system_settings
+  add column if not exists quarterly_draw_enabled boolean not null default false,
+  add column if not exists quarterly_draw_percentage integer not null default 10
+    check (quarterly_draw_percentage > 0 and quarterly_draw_percentage <= 100);
+
+-- One row per member per quarter actually picked — doubles as the
+-- idempotency guard (the cron checks for an existing row with today's
+-- draw_date before running) and as a record the founder can look back
+-- on. Eligible members are active, non-complimentary, real Stripe
+-- customers only — same shape of eligibility as the anniversary reward.
+create table if not exists public.quarterly_draw_recipients (
+  id uuid primary key default gen_random_uuid(),
+  member_id uuid not null references auth.users(id) on delete cascade,
+  draw_date date not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.quarterly_draw_recipients enable row level security;
+-- Intentionally no policies — service_role-only, same as offer_reports.
+
+create index if not exists quarterly_draw_recipients_draw_date_idx
+  on public.quarterly_draw_recipients (draw_date);
