@@ -1063,55 +1063,17 @@ create policy "Anyone can join the waitlist"
 create unique index if not exists waitlist_signups_email_lower_idx
   on public.waitlist_signups (lower(email));
 
--- Anniversary reward (2026-08-30). subscription_started_at marks the
--- start of the member's CURRENT unbroken paid stretch — set by the
--- website's Stripe webhook on every genuine first payment (see that
--- file's own comment), which naturally resets on a cancel-then-
--- resubscribe rather than counting from the original account creation
--- date. Complimentary time never touches this field, so it never counts
--- toward the 12 months either — both were explicit founder requirements.
--- last_anniversary_reward_at records when a credit was last actually
--- given, so the reward can recur every 12 months of continued paid
--- tenure without double-firing on the same anniversary.
+-- subscription_started_at marks the start of the member's CURRENT
+-- unbroken paid stretch — set by the website's Stripe webhook on every
+-- genuine first payment, resetting on a cancel-then-resubscribe rather
+-- than counting from account creation. Originally added for the
+-- anniversary reward (2026-08-30); that feature and quarterly draw were
+-- both removed 2026-08-31 (see PRIVI_LAUNCH_STATUS.md/memory for why —
+-- their "worth one month" credit competed with referral rewards for the
+-- same Stripe balance pool, with no clean way to explain a cap to a
+-- member who hadn't done anything to earn or lose the reward). This
+-- column is left in place as a generically useful timestamp; the
+-- anniversary/quarterly-specific columns and table below were dropped —
+-- see reward_removal_cleanup_migration.sql if that hasn't been run yet.
 alter table public.profiles
-  add column if not exists subscription_started_at timestamptz,
-  add column if not exists last_anniversary_reward_at timestamptz;
-
--- Admin-editable, OFF by default — the reward mechanism is built and
--- ready but must not actually fire (no credits, no emails) until the
--- founder has reviewed and approved the email/notification copy. Same
--- "ship the plumbing, flip it on later" pattern as offer_report_flag_
--- threshold.
-alter table public.system_settings
-  add column if not exists anniversary_rewards_enabled boolean not null default false;
-
--- Quarterly draw (2026-08-30) — same "worth one month" discount as the
--- anniversary reward, but a flat percentage of eligible members picked
--- at random each quarter rather than tied to tenure. Deliberately kept
--- out of any "raffle"/"prize"/"entered" framing in copy — a spontaneous
--- gift, not a competition, per explicit founder instruction. Percentage
--- is admin-editable so the founder can tune it later without a rebuild;
--- enabled flag is OFF by default for the same "review the copy first"
--- reason as anniversary_rewards_enabled.
-alter table public.system_settings
-  add column if not exists quarterly_draw_enabled boolean not null default false,
-  add column if not exists quarterly_draw_percentage integer not null default 10
-    check (quarterly_draw_percentage > 0 and quarterly_draw_percentage <= 100);
-
--- One row per member per quarter actually picked — doubles as the
--- idempotency guard (the cron checks for an existing row with today's
--- draw_date before running) and as a record the founder can look back
--- on. Eligible members are active, non-complimentary, real Stripe
--- customers only — same shape of eligibility as the anniversary reward.
-create table if not exists public.quarterly_draw_recipients (
-  id uuid primary key default gen_random_uuid(),
-  member_id uuid not null references auth.users(id) on delete cascade,
-  draw_date date not null,
-  created_at timestamptz not null default now()
-);
-
-alter table public.quarterly_draw_recipients enable row level security;
--- Intentionally no policies — service_role-only, same as offer_reports.
-
-create index if not exists quarterly_draw_recipients_draw_date_idx
-  on public.quarterly_draw_recipients (draw_date);
+  add column if not exists subscription_started_at timestamptz;
