@@ -11,6 +11,14 @@ export type ReferralReward = {
   created_at: string;
   referrer_name: string;
   referred_name: string;
+  // Added 2026-08-31 alongside the accumulation cap — without these, a
+  // capped or complimentary-referrer row (always amount_gbp: 0) showed
+  // as an unexplained "£0.00" in the list, indistinguishable from
+  // something having gone wrong. Totals were never actually affected
+  // (a £0 row contributes nothing either way), only the display was
+  // misleading.
+  capped: boolean;
+  complimentaryReferrer: boolean;
 };
 
 export type ReferralSummary = {
@@ -26,7 +34,7 @@ export async function getReferralSummary(): Promise<ReferralSummary> {
   const { data } = await adminClient
     .from("referral_rewards")
     .select(
-      `id, reward_type, amount_gbp, created_at,
+      `id, reward_type, amount_gbp, created_at, capped, complimentary_referrer,
        referrer:profiles!referral_rewards_referrer_id_fkey(first_name, last_name),
        referred:profiles!referral_rewards_referred_id_fkey(first_name, last_name)`,
     )
@@ -37,6 +45,8 @@ export async function getReferralSummary(): Promise<ReferralSummary> {
     reward_type: "new_member_discount" | "referrer_reward";
     amount_gbp: number;
     created_at: string;
+    capped: boolean | null;
+    complimentary_referrer: boolean | null;
     referrer: { first_name: string; last_name: string } | null;
     referred: { first_name: string; last_name: string } | null;
   };
@@ -50,6 +60,8 @@ export async function getReferralSummary(): Promise<ReferralSummary> {
     created_at: r.created_at,
     referrer_name: r.referrer ? `${r.referrer.first_name} ${r.referrer.last_name}`.trim() : "—",
     referred_name: r.referred ? `${r.referred.first_name} ${r.referred.last_name}`.trim() : "—",
+    capped: Boolean(r.capped),
+    complimentaryReferrer: Boolean(r.complimentary_referrer),
   }));
 
   return {
