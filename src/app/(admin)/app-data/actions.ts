@@ -31,6 +31,13 @@ export async function updateSystemSettingsAction(
   }
 
   const anniversaryRewardsEnabled = formData.get("anniversary_rewards_enabled") === "on";
+  const quarterlyDrawEnabled = formData.get("quarterly_draw_enabled") === "on";
+
+  const drawPercentageRaw = String(formData.get("quarterly_draw_percentage") ?? "");
+  const drawPercentage = Number(drawPercentageRaw);
+  if (!Number.isInteger(drawPercentage) || drawPercentage < 1 || drawPercentage > 100) {
+    return { error: "Quarterly draw percentage must be a whole number between 1 and 100." };
+  }
 
   const adminClient = createAdminClient();
   if (!adminClient) throw new Error("Admin Supabase client is not configured.");
@@ -41,6 +48,8 @@ export async function updateSystemSettingsAction(
       default_expiry_warning_days: expiryDays,
       offer_report_flag_threshold: reportThreshold,
       anniversary_rewards_enabled: anniversaryRewardsEnabled,
+      quarterly_draw_enabled: quarterlyDrawEnabled,
+      quarterly_draw_percentage: drawPercentage,
       help_faq_url: textOrNull(formData, "help_faq_url"),
       privacy_policy_url: textOrNull(formData, "privacy_policy_url"),
       terms_url: textOrNull(formData, "terms_url"),
