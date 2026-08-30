@@ -18,7 +18,8 @@ export type ActivityEntityType =
   | "business_application"
   | "business_application_status"
   | "featured_payment_request"
-  | "offer_report";
+  | "offer_report"
+  | "waitlist";
 
 export type LogActivityInput = {
   adminId: string;

@@ -28,6 +28,15 @@ export default async function AppDataPage() {
             Manage the homepage&apos;s seasonal promotional banner.
           </span>
         </NavLink>
+        <NavLink
+          href="/app-data/waitlist"
+          className="flex flex-col gap-1 rounded-2xl border border-border-hairline bg-white p-4 hover:border-gold"
+        >
+          <span className="text-sm font-medium">Waitlist</span>
+          <span className="text-xs text-muted-dark">
+            Notify everyone waiting once sign-up is genuinely live.
+          </span>
+        </NavLink>
       </div>
 
       <SettingsForm settings={settings} />

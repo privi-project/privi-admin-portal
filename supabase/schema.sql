@@ -1063,6 +1063,18 @@ create policy "Anyone can join the waitlist"
 create unique index if not exists waitlist_signups_email_lower_idx
   on public.waitlist_signups (lower(email));
 
+-- Waitlist notification campaign (2026-08-31) — deliberately minimal,
+-- founder call: this is a one-time-use feature (the waitlist stops
+-- mattering the moment sign-up is genuinely live), so no cron, no
+-- scheduled reminder, no history table — just two admin-triggered
+-- button presses, each idempotency-guarded by these two columns so an
+-- accidental second click never double-emails anyone. notified_at is
+-- set when the "we're live" email goes out; reminded_at when the
+-- follow-up does (only to people who hadn't signed up by then).
+alter table public.waitlist_signups
+  add column if not exists notified_at timestamptz,
+  add column if not exists reminded_at timestamptz;
+
 -- subscription_started_at marks the start of the member's CURRENT
 -- unbroken paid stretch — set by the website's Stripe webhook on every
 -- genuine first payment, resetting on a cancel-then-resubscribe rather
