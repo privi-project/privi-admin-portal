@@ -1062,3 +1062,25 @@ create policy "Anyone can join the waitlist"
 -- casing aside) should never create duplicate rows to email later.
 create unique index if not exists waitlist_signups_email_lower_idx
   on public.waitlist_signups (lower(email));
+
+-- Anniversary reward (2026-08-30). subscription_started_at marks the
+-- start of the member's CURRENT unbroken paid stretch — set by the
+-- website's Stripe webhook on every genuine first payment (see that
+-- file's own comment), which naturally resets on a cancel-then-
+-- resubscribe rather than counting from the original account creation
+-- date. Complimentary time never touches this field, so it never counts
+-- toward the 12 months either — both were explicit founder requirements.
+-- last_anniversary_reward_at records when a credit was last actually
+-- given, so the reward can recur every 12 months of continued paid
+-- tenure without double-firing on the same anniversary.
+alter table public.profiles
+  add column if not exists subscription_started_at timestamptz,
+  add column if not exists last_anniversary_reward_at timestamptz;
+
+-- Admin-editable, OFF by default — the reward mechanism is built and
+-- ready but must not actually fire (no credits, no emails) until the
+-- founder has reviewed and approved the email/notification copy. Same
+-- "ship the plumbing, flip it on later" pattern as offer_report_flag_
+-- threshold.
+alter table public.system_settings
+  add column if not exists anniversary_rewards_enabled boolean not null default false;

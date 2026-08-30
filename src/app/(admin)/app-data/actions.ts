@@ -30,6 +30,8 @@ export async function updateSystemSettingsAction(
     return { error: "Offer report flag threshold must be a whole number (1 or more)." };
   }
 
+  const anniversaryRewardsEnabled = formData.get("anniversary_rewards_enabled") === "on";
+
   const adminClient = createAdminClient();
   if (!adminClient) throw new Error("Admin Supabase client is not configured.");
 
@@ -38,6 +40,7 @@ export async function updateSystemSettingsAction(
     .update({
       default_expiry_warning_days: expiryDays,
       offer_report_flag_threshold: reportThreshold,
+      anniversary_rewards_enabled: anniversaryRewardsEnabled,
       help_faq_url: textOrNull(formData, "help_faq_url"),
       privacy_policy_url: textOrNull(formData, "privacy_policy_url"),
       terms_url: textOrNull(formData, "terms_url"),
