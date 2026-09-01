@@ -1,4 +1,3 @@
-import { NavLink } from "@/components/nav-link";
 import { listBusinessApplications, listApplicationStatuses } from "@/lib/business-applications/queries";
 import { listCategories } from "@/lib/categories/queries";
 import { ApplicationCard } from "./application-card";
@@ -19,20 +18,13 @@ export default async function BusinessApplicationsPage() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-medium">Business applications</h1>
-          <p className="mt-1 text-sm text-muted-dark">
-            Submissions from the (not yet public) &quot;apply to list your
-            business&quot; form, plus anyone you&apos;ve added manually from a
-            direct conversation. Move a card through the columns as you
-            action it — notes are private, only visible here.
-          </p>
-        </div>
-        <NavLink href="/business-applications/statuses" className="shrink-0 text-sm text-gold">
-          Manage columns
-        </NavLink>
-      </div>
+      <h1 className="text-lg font-medium">Business applications</h1>
+      <p className="mt-1 max-w-2xl text-sm text-muted-dark">
+        Submissions from the (not yet public) &quot;apply to list your
+        business&quot; form, plus anyone you&apos;ve added manually from a
+        direct conversation. Move a card through the columns as you
+        action it — notes are private, only visible here.
+      </p>
 
       <div className="mt-4">
         <AddApplicationToggle
