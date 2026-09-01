@@ -6,6 +6,12 @@ import {
   countActiveFeaturedInCategory,
   getBusinessCategories,
 } from "@/lib/businesses/queries";
+import { sendTransactionalEmail } from "@/lib/emails/resend";
+import { featuredActivatedEmail, PARTNERS_EMAIL } from "@/lib/emails/featured";
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
 
 export type ActivateFeaturedInput = {
   businessId: string;
@@ -120,6 +126,42 @@ export async function activateFeaturedPlacement(
     entityId: businessId,
     entityLabel: `${businessName} — featured (${tier}, ${durationMonths}mo, £${amountCharged.toFixed(2)})`,
   });
+
+  // Best-effort — a failed confirmation email shouldn't undo an
+  // activation that already genuinely succeeded (cap checks passed, the
+  // business is live). Same reasoning as every other transactional send
+  // in this project: log and move on rather than surface it as an error
+  // to the admin, since the placement itself is already correct.
+  try {
+    const { data: business } = await adminClient
+      .from("businesses")
+      .select("contact_name, contact_email")
+      .eq("id", businessId)
+      .maybeSingle();
+
+    if (business?.contact_email) {
+      let locationLabels: string[] | undefined;
+      if (locationScope === "selected" && locationIds && locationIds.length > 0) {
+        const { data: locations } = await adminClient
+          .from("business_locations")
+          .select("label, city")
+          .in("id", locationIds);
+        locationLabels = (locations ?? []).map((l) => l.label || l.city || "a location");
+      }
+
+      const { subject, html } = featuredActivatedEmail({
+        businessName: business.contact_name || businessName,
+        tier,
+        term: durationMonths === 1 ? "1 month" : `${durationMonths} months`,
+        startDate: formatDate(now.toISOString()),
+        endDate: formatDate(expires.toISOString()),
+        locations: locationLabels,
+      });
+      await sendTransactionalEmail({ to: business.contact_email, subject, html, replyTo: PARTNERS_EMAIL });
+    }
+  } catch (emailErr) {
+    console.error("activateFeaturedPlacement: confirmation email failed", businessId, emailErr);
+  }
 
   return {};
 }

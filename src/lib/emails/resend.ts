@@ -8,10 +8,17 @@ export async function sendTransactionalEmail({
   to,
   subject,
   html,
+  replyTo,
 }: {
   to: string;
   subject: string;
   html: string;
+  /** 2026-09-01: Featured Placement emails (featured.ts) set this to
+   * partners@privi.info — a business replying to an activation/renewal
+   * notice should land with the founder, not bounce off a genuine
+   * no-reply address. Omitted entirely (not just left undefined) when
+   * not passed, rather than sending an empty reply_to field. */
+  replyTo?: string;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -31,6 +38,7 @@ export async function sendTransactionalEmail({
         to: [to],
         subject,
         html,
+        ...(replyTo ? { reply_to: replyTo } : {}),
       }),
     });
 
