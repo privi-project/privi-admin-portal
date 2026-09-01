@@ -1100,3 +1100,34 @@ alter table public.waitlist_signups
 -- see reward_removal_cleanup_migration.sql if that hasn't been run yet.
 alter table public.profiles
   add column if not exists subscription_started_at timestamptz;
+
+-- Business contacts (2026-09-02) — a business's main contact_name/
+-- contact_email stays as-is (still the default fallback everywhere),
+-- but a business can now optionally have additional named contacts for
+-- specific automated-email categories, e.g. someone in accounts who
+-- should get Featured Placement lifecycle emails instead of (or as well
+-- as) whoever the main contact is. categories is a plain text array
+-- rather than a join table — the category list is short and expected to
+-- grow slowly (see lib/contacts/categories.ts), and a contact can belong
+-- to more than one at once (someone who handles everything ticks every
+-- box). Every automated send that supports this checks it first and
+-- falls back to the business's own contact_name/contact_email only when
+-- nothing here matches — most businesses will never add one of these,
+-- and existing behaviour must keep working unchanged for them.
+create table if not exists public.business_contacts (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  name text not null,
+  email text not null,
+  categories text[] not null default '{}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.business_contacts enable row level security;
+-- No policies — service_role-only, same pattern as featured_payment_requests.
+
+create index if not exists business_contacts_business_id_idx
+  on public.business_contacts (business_id);
+create index if not exists business_contacts_categories_idx
+  on public.business_contacts using gin (categories);
