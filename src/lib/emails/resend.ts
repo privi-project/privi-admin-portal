@@ -10,7 +10,12 @@ export async function sendTransactionalEmail({
   html,
   replyTo,
 }: {
-  to: string;
+  /** A single address, or several — e.g. every business_contacts row
+   * tagged for a given category (2026-09-02). Sent as one email with
+   * all of them in "To", not separate copies — normal for a shared
+   * business inbox situation, and simpler than tracking N individual
+   * sends. */
+  to: string | string[];
   subject: string;
   html: string;
   /** 2026-09-01: Featured Placement emails (featured.ts) set this to
@@ -35,7 +40,7 @@ export async function sendTransactionalEmail({
       },
       body: JSON.stringify({
         from: "Privi <noreply@privi.info>",
-        to: [to],
+        to: Array.isArray(to) ? to : [to],
         subject,
         html,
         ...(replyTo ? { reply_to: replyTo } : {}),

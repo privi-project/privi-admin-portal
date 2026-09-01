@@ -8,6 +8,7 @@ import {
 } from "@/lib/businesses/queries";
 import { sendTransactionalEmail } from "@/lib/emails/resend";
 import { featuredActivatedEmail, PARTNERS_EMAIL } from "@/lib/emails/featured";
+import { listContactsForCategory, greetingNames } from "@/lib/contacts/queries";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -133,13 +134,9 @@ export async function activateFeaturedPlacement(
   // in this project: log and move on rather than surface it as an error
   // to the admin, since the placement itself is already correct.
   try {
-    const { data: business } = await adminClient
-      .from("businesses")
-      .select("contact_name, contact_email")
-      .eq("id", businessId)
-      .maybeSingle();
+    const recipients = await listContactsForCategory(businessId, "featured");
 
-    if (business?.contact_email) {
+    if (recipients.length > 0) {
       let locationLabels: string[] | undefined;
       if (locationScope === "selected" && locationIds && locationIds.length > 0) {
         const { data: locations } = await adminClient
@@ -150,14 +147,19 @@ export async function activateFeaturedPlacement(
       }
 
       const { subject, html } = featuredActivatedEmail({
-        businessName: business.contact_name || businessName,
+        businessName: greetingNames(recipients.map((r) => r.name)) || businessName,
         tier,
         term: durationMonths === 1 ? "1 month" : `${durationMonths} months`,
         startDate: formatDate(now.toISOString()),
         endDate: formatDate(expires.toISOString()),
         locations: locationLabels,
       });
-      await sendTransactionalEmail({ to: business.contact_email, subject, html, replyTo: PARTNERS_EMAIL });
+      await sendTransactionalEmail({
+        to: recipients.map((r) => r.email),
+        subject,
+        html,
+        replyTo: PARTNERS_EMAIL,
+      });
     }
   } catch (emailErr) {
     console.error("activateFeaturedPlacement: confirmation email failed", businessId, emailErr);

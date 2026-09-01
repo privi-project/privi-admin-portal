@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendTransactionalEmail } from "@/lib/emails/resend";
 import { featuredExpiringSoonEmail, featuredLapsedEmail, PARTNERS_EMAIL } from "@/lib/emails/featured";
+import { listContactsForCategory, greetingNames } from "@/lib/contacts/queries";
 
 /**
  * The automated half of the Featured Placement lifecycle emails (the
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
 
   const { data: businesses, error } = await adminClient
     .from("businesses")
-    .select("id, name, contact_name, contact_email, featured_expires_at")
+    .select("id, name, featured_expires_at")
     .neq("featured_level", "none")
     .not("featured_expires_at", "is", null);
 
@@ -82,12 +83,13 @@ export async function GET(req: NextRequest) {
     const days = daysUntil(expiresAt);
     if (days !== 7 && days !== -3) continue;
 
-    if (!business.contact_email) {
+    const recipients = await listContactsForCategory(business.id, "featured");
+    if (recipients.length === 0) {
       skippedNoEmail++;
       continue;
     }
 
-    const recipientName = business.contact_name || business.name;
+    const recipientName = greetingNames(recipients.map((r) => r.name)) || business.name;
     const expiryLabel = formatDate(expiresAt);
 
     const { subject, html } =
@@ -95,7 +97,12 @@ export async function GET(req: NextRequest) {
         ? featuredExpiringSoonEmail({ businessName: recipientName, expiryDate: expiryLabel })
         : featuredLapsedEmail({ businessName: recipientName, expiryDate: expiryLabel });
 
-    await sendTransactionalEmail({ to: business.contact_email, subject, html, replyTo: PARTNERS_EMAIL });
+    await sendTransactionalEmail({
+      to: recipients.map((r) => r.email),
+      subject,
+      html,
+      replyTo: PARTNERS_EMAIL,
+    });
 
     if (days === 7) expiringSoon++;
     else lapsed++;

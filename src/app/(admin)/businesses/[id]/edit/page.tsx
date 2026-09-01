@@ -2,6 +2,7 @@ import { NavLink } from "@/components/nav-link";
 import { notFound } from "next/navigation";
 import { getBusiness, getBusinessCategoryIds, getFeaturedLocationIds } from "@/lib/businesses/queries";
 import { listLocationsForBusiness } from "@/lib/locations/queries";
+import { listBusinessContacts } from "@/lib/contacts/queries";
 import { CategoryMultiselect } from "@/components/category-multiselect";
 import { EditBusinessForm } from "./edit-business-form";
 import { FeaturedControl } from "./featured-control";
@@ -9,6 +10,7 @@ import { BusinessArchiveControl } from "./business-archive-control";
 import { BusinessDeleteControl } from "./business-delete-control";
 import { LocationsList } from "./locations-list";
 import { OffersList } from "./offers-list";
+import { ContactsList } from "./contacts-list";
 
 export default async function EditBusinessPage({
   params,
@@ -22,6 +24,7 @@ export default async function EditBusinessPage({
   const selectedCategoryIds = await getBusinessCategoryIds(id);
   const locations = await listLocationsForBusiness(id);
   const selectedFeaturedLocationIds = await getFeaturedLocationIds(id);
+  const contacts = await listBusinessContacts(id);
 
   return (
     <div className="p-6">
@@ -56,6 +59,8 @@ export default async function EditBusinessPage({
         locations={locations}
         selectedFeaturedLocationIds={selectedFeaturedLocationIds}
       />
+
+      <ContactsList businessId={id} businessName={business.name} contacts={contacts} />
 
       <LocationsList businessId={id} />
       <OffersList businessId={id} />
