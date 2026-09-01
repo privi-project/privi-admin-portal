@@ -84,15 +84,33 @@ export function AddPaymentForm({ businesses }: { businesses: { id: string; name:
         />
       </label>
 
-      <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-sm">
-        Billing address
+      <fieldset className="flex min-w-[20rem] flex-1 flex-wrap gap-2 rounded-lg border border-border-hairline p-3">
+        <legend className="px-1 text-xs text-muted-dark">Billing address (optional — needed to generate a PDF invoice)</legend>
         <input
           type="text"
-          name="billing_address"
-          placeholder="optional — needed to generate a PDF invoice"
-          className="rounded-lg border border-border-hairline px-3 py-2"
+          name="billing_address_line1"
+          placeholder="Address line 1"
+          className="min-w-[10rem] flex-1 rounded-lg border border-border-hairline px-3 py-2 text-sm"
         />
-      </label>
+        <input
+          type="text"
+          name="billing_address_line2"
+          placeholder="Address line 2 (optional)"
+          className="min-w-[10rem] flex-1 rounded-lg border border-border-hairline px-3 py-2 text-sm"
+        />
+        <input
+          type="text"
+          name="billing_address_city"
+          placeholder="Town / City"
+          className="min-w-[8rem] flex-1 rounded-lg border border-border-hairline px-3 py-2 text-sm"
+        />
+        <input
+          type="text"
+          name="billing_address_postcode"
+          placeholder="Postcode"
+          className="w-32 rounded-lg border border-border-hairline px-3 py-2 text-sm"
+        />
+      </fieldset>
 
       <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
         Notes

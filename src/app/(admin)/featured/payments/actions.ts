@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/activity/log";
 import { isRequired } from "@/lib/validation";
 import { FEATURED_DURATIONS } from "@/lib/featured-config";
 import { activateFeaturedPlacement } from "@/lib/featured/activate";
+import { joinBillingAddress, type BillingAddressFields } from "@/lib/invoice/billing-address";
 
 export type PaymentFormState = { error?: string } | undefined;
 
@@ -24,7 +25,12 @@ export async function createPaymentRequestAction(
   const durationMonths = Number(formData.get("duration_months"));
   const amountGbp = Number(formData.get("amount_gbp"));
   const invoiceNumber = String(formData.get("invoice_number") ?? "").trim() || null;
-  const billingAddress = String(formData.get("billing_address") ?? "").trim() || null;
+  const billingAddress = joinBillingAddress({
+    line1: String(formData.get("billing_address_line1") ?? ""),
+    line2: String(formData.get("billing_address_line2") ?? ""),
+    city: String(formData.get("billing_address_city") ?? ""),
+    postcode: String(formData.get("billing_address_postcode") ?? ""),
+  });
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   if (!isRequired(businessName)) return { error: "Business name is required." };
@@ -160,16 +166,16 @@ export async function markPaidAndActivateFeaturedAction(paymentId: string): Prom
  * etc. are treated as fixed once agreed, same as everywhere else in this
  * project — only undecided things are editable).
  */
-export async function updateBillingAddressAction(paymentId: string, billingAddress: string) {
+export async function updateBillingAddressAction(paymentId: string, fields: BillingAddressFields) {
   const adminClient = createAdminClient();
   if (!adminClient) throw new Error("Admin Supabase client is not configured.");
 
-  const trimmed = billingAddress.trim();
-  if (!trimmed) return { error: "Enter a billing address." };
+  const joined = joinBillingAddress(fields);
+  if (!joined) return { error: "Enter a billing address." };
 
   await adminClient
     .from("featured_payment_requests")
-    .update({ billing_address: trimmed, updated_at: new Date().toISOString() })
+    .update({ billing_address: joined, updated_at: new Date().toISOString() })
     .eq("id", paymentId);
 
   revalidatePath("/featured/payments");

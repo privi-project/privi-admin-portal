@@ -9,6 +9,7 @@ import {
   deletePaymentRequestAction,
   updateBillingAddressAction,
 } from "./actions";
+import { splitBillingAddress, type BillingAddressFields } from "@/lib/invoice/billing-address";
 import type { FeaturedPaymentRequest } from "@/lib/featured/payment-queries";
 
 function formatDate(iso: string): string {
@@ -20,7 +21,14 @@ export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [editingAddress, setEditingAddress] = useState(false);
-  const [addressDraft, setAddressDraft] = useState(payment.billing_address ?? "");
+  const [addressDraft, setAddressDraft] = useState<BillingAddressFields>(() =>
+    splitBillingAddress(payment.billing_address),
+  );
+
+  const openEditor = () => {
+    setAddressDraft(splitBillingAddress(payment.billing_address));
+    setEditingAddress(true);
+  };
 
   const handleSaveAddress = () => {
     setError(null);
@@ -74,14 +82,37 @@ export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
       )}
 
       {editingAddress ? (
-        <div className="flex flex-col gap-1">
-          <textarea
-            value={addressDraft}
-            onChange={(e) => setAddressDraft(e.target.value)}
-            placeholder={"Street\nTown, Postcode"}
-            rows={2}
+        <div className="flex flex-col gap-1.5">
+          <input
+            type="text"
+            value={addressDraft.line1}
+            onChange={(e) => setAddressDraft((d) => ({ ...d, line1: e.target.value }))}
+            placeholder="Address line 1"
             className="rounded-lg border border-border-hairline px-2 py-1.5 text-xs"
           />
+          <input
+            type="text"
+            value={addressDraft.line2}
+            onChange={(e) => setAddressDraft((d) => ({ ...d, line2: e.target.value }))}
+            placeholder="Address line 2 (optional)"
+            className="rounded-lg border border-border-hairline px-2 py-1.5 text-xs"
+          />
+          <div className="flex gap-1.5">
+            <input
+              type="text"
+              value={addressDraft.city}
+              onChange={(e) => setAddressDraft((d) => ({ ...d, city: e.target.value }))}
+              placeholder="Town / City"
+              className="min-w-0 flex-1 rounded-lg border border-border-hairline px-2 py-1.5 text-xs"
+            />
+            <input
+              type="text"
+              value={addressDraft.postcode}
+              onChange={(e) => setAddressDraft((d) => ({ ...d, postcode: e.target.value }))}
+              placeholder="Postcode"
+              className="w-24 rounded-lg border border-border-hairline px-2 py-1.5 text-xs"
+            />
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -91,14 +122,7 @@ export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
             >
               {isPending ? "Saving…" : "Save address"}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingAddress(false);
-                setAddressDraft(payment.billing_address ?? "");
-              }}
-              className="text-xs text-muted-dark"
-            >
+            <button type="button" onClick={() => setEditingAddress(false)} className="text-xs text-muted-dark">
               Cancel
             </button>
           </div>
@@ -113,18 +137,14 @@ export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
           >
             Download invoice (PDF)
           </a>
-          <button
-            type="button"
-            onClick={() => setEditingAddress(true)}
-            className="text-xs text-muted-dark underline underline-offset-2"
-          >
+          <button type="button" onClick={openEditor} className="text-xs text-muted-dark underline underline-offset-2">
             Edit address
           </button>
         </div>
       ) : (
         <button
           type="button"
-          onClick={() => setEditingAddress(true)}
+          onClick={openEditor}
           className="w-fit text-xs italic text-muted-dark underline underline-offset-2"
         >
           Add a billing address to generate a PDF invoice
