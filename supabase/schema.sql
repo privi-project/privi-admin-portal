@@ -1131,3 +1131,13 @@ create index if not exists business_contacts_business_id_idx
   on public.business_contacts (business_id);
 create index if not exists business_contacts_categories_idx
   on public.business_contacts using gin (categories);
+
+-- business_applications.source (2026-09-02) — distinguishes a real
+-- public-form submission from a card the founder added manually for
+-- someone they're already talking to in person (walking an area, a
+-- chain/BID conversation) who hasn't filled in the form yet. Defaults to
+-- 'form' so every existing and future public submission needs no change;
+-- manual creation is the one path that sets 'manual' explicitly.
+alter table public.business_applications
+  add column if not exists source text not null default 'form'
+    check (source in ('form', 'manual'));

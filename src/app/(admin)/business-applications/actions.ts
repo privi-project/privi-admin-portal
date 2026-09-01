@@ -4,7 +4,75 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdminSession } from "@/lib/auth/session";
 import { logActivity } from "@/lib/activity/log";
+import { isRequired } from "@/lib/validation";
 import { NEW_APPLICATION_STATUS_SLUG } from "@/lib/business-applications/config";
+
+export type ManualApplicationFormState = { error?: string } | undefined;
+
+/**
+ * The direct-outreach counterpart to the public form — for a business
+ * the founder is already talking to (walking an area, a chain/BID
+ * conversation) who hasn't submitted the website form themselves.
+ * Deliberately lets the caller choose the starting column rather than
+ * always defaulting to "New" — someone already mid-conversation often
+ * belongs straight in "Contacted", not queued as if unworked.
+ */
+export async function createManualApplicationAction(
+  _prevState: ManualApplicationFormState,
+  formData: FormData,
+): Promise<ManualApplicationFormState> {
+  const session = await requireAdminSession();
+
+  const businessName = String(formData.get("business_name") ?? "").trim();
+  const categoryId = String(formData.get("category_id") ?? "").trim() || null;
+  const locationType = String(formData.get("location_type") ?? "single");
+  const contactName = String(formData.get("contact_name") ?? "").trim();
+  const contactEmail = String(formData.get("contact_email") ?? "").trim();
+  const contactPhone = String(formData.get("contact_phone") ?? "").trim() || null;
+  const message = String(formData.get("message") ?? "").trim() || null;
+  const status = String(formData.get("status") ?? "").trim();
+
+  if (!isRequired(businessName)) return { error: "Business name is required." };
+  if (!isRequired(contactName)) return { error: "Contact name is required." };
+  if (!isRequired(contactEmail)) return { error: "Contact email is required." };
+  if (!["single", "multi"].includes(locationType)) return { error: "Choose a location type." };
+
+  const adminClient = createAdminClient();
+  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
+
+  const { data: statusRow } = await adminClient
+    .from("business_application_statuses")
+    .select("slug")
+    .eq("slug", status)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!statusRow) return { error: "Choose a starting column." };
+
+  const { error } = await adminClient.from("business_applications").insert({
+    business_name: businessName,
+    category_id: categoryId,
+    location_type: locationType,
+    contact_name: contactName,
+    contact_email: contactEmail,
+    contact_phone: contactPhone,
+    message,
+    status,
+    source: "manual",
+  });
+
+  if (error) return { error: error.message };
+
+  await logActivity({
+    adminId: session.userId,
+    adminEmail: session.email,
+    action: "added manually",
+    entityType: "business_application",
+    entityLabel: `${businessName} — ${status}`,
+  });
+
+  revalidatePath("/business-applications");
+  revalidatePath("/home");
+}
 
 export async function moveApplicationStatusAction(
   id: string,

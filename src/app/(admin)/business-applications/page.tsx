@@ -1,11 +1,14 @@
 import { NavLink } from "@/components/nav-link";
 import { listBusinessApplications, listApplicationStatuses } from "@/lib/business-applications/queries";
+import { listCategories } from "@/lib/categories/queries";
 import { ApplicationCard } from "./application-card";
+import { AddApplicationToggle } from "./add-application-toggle";
 
 export default async function BusinessApplicationsPage() {
-  const [applications, statuses] = await Promise.all([
+  const [applications, statuses, categories] = await Promise.all([
     listBusinessApplications(),
     listApplicationStatuses(),
+    listCategories(),
   ]);
 
   // Columns shown = every active status, PLUS any inactive one that still
@@ -21,13 +24,21 @@ export default async function BusinessApplicationsPage() {
           <h1 className="text-lg font-medium">Business applications</h1>
           <p className="mt-1 text-sm text-muted-dark">
             Submissions from the (not yet public) &quot;apply to list your
-            business&quot; form. Move a card through the columns as you action
-            it — notes are private, only visible here.
+            business&quot; form, plus anyone you&apos;ve added manually from a
+            direct conversation. Move a card through the columns as you
+            action it — notes are private, only visible here.
           </p>
         </div>
         <NavLink href="/business-applications/statuses" className="shrink-0 text-sm text-gold">
           Manage columns
         </NavLink>
+      </div>
+
+      <div className="mt-4">
+        <AddApplicationToggle
+          categories={categories.filter((c) => c.is_active).map((c) => ({ id: c.id, label: c.label }))}
+          statuses={statuses}
+        />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-5">

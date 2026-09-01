@@ -72,7 +72,12 @@ export function ApplicationCard({
         aria-label={expanded ? "Hide details" : "Show details"}
         className="flex items-center justify-between gap-2 text-left"
       >
-        <p className="min-w-0 truncate font-medium">{application.business_name}</p>
+        <p className="min-w-0 flex-1 truncate font-medium">{application.business_name}</p>
+        {application.source === "manual" && (
+          <span className="shrink-0 rounded-full bg-border-hairline-2 px-2 py-0.5 text-[10px] font-medium text-muted-dark">
+            Added manually
+          </span>
+        )}
         <span
           className={`shrink-0 text-gold transition-transform ${expanded ? "rotate-180" : ""}`}
           aria-hidden="true"
