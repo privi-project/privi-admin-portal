@@ -7,6 +7,7 @@ import {
   markPaymentStatusAction,
   markPaidAndActivateFeaturedAction,
   deletePaymentRequestAction,
+  updateBillingAddressAction,
 } from "./actions";
 import type { FeaturedPaymentRequest } from "@/lib/featured/payment-queries";
 
@@ -18,6 +19,17 @@ export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [addressDraft, setAddressDraft] = useState(payment.billing_address ?? "");
+
+  const handleSaveAddress = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await updateBillingAddressAction(payment.id, addressDraft);
+      if (result?.error) setError(result.error);
+      else setEditingAddress(false);
+    });
+  };
 
   const handleToggle = () => {
     setError(null);
@@ -59,6 +71,64 @@ export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
 
       {payment.invoice_number && (
         <p className="text-xs text-muted-dark">Invoice {payment.invoice_number}</p>
+      )}
+
+      {editingAddress ? (
+        <div className="flex flex-col gap-1">
+          <textarea
+            value={addressDraft}
+            onChange={(e) => setAddressDraft(e.target.value)}
+            placeholder={"Street\nTown, Postcode"}
+            rows={2}
+            className="rounded-lg border border-border-hairline px-2 py-1.5 text-xs"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSaveAddress}
+              disabled={isPending}
+              className="text-xs font-medium text-gold disabled:opacity-60"
+            >
+              {isPending ? "Saving…" : "Save address"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingAddress(false);
+                setAddressDraft(payment.billing_address ?? "");
+              }}
+              className="text-xs text-muted-dark"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : payment.billing_address ? (
+        <div className="flex items-center gap-3">
+          <a
+            href={`/featured/payments/${payment.id}/invoice.pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-medium text-gold underline underline-offset-2"
+          >
+            Download invoice (PDF)
+          </a>
+          <button
+            type="button"
+            onClick={() => setEditingAddress(true)}
+            className="text-xs text-muted-dark underline underline-offset-2"
+          >
+            Edit address
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEditingAddress(true)}
+          className="w-fit text-xs italic text-muted-dark underline underline-offset-2"
+        >
+          Add a billing address to generate a PDF invoice
+        </button>
       )}
 
       {payment.notes && (

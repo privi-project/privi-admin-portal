@@ -79,7 +79,17 @@ export function AddPaymentForm({ businesses }: { businesses: { id: string; name:
         <input
           type="text"
           name="invoice_number"
-          placeholder="optional"
+          placeholder="auto-generated if left blank"
+          className="rounded-lg border border-border-hairline px-3 py-2"
+        />
+      </label>
+
+      <label className="flex min-w-[14rem] flex-1 flex-col gap-1 text-sm">
+        Billing address
+        <input
+          type="text"
+          name="billing_address"
+          placeholder="optional — needed to generate a PDF invoice"
           className="rounded-lg border border-border-hairline px-3 py-2"
         />
       </label>

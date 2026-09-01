@@ -770,6 +770,17 @@ create table if not exists public.featured_payment_requests (
   updated_at timestamptz not null default now()
 );
 
+-- 2026-09-01: real invoice PDF generation added — a free-text billing
+-- address rather than pulling from business_locations, since half these
+-- rows are for businesses not added to the portal yet (business_id null),
+-- and even a linked business can have several locations with no single
+-- obvious "billing" one among them. invoice_number now also gets
+-- auto-generated (and persisted back here) at first PDF download if left
+-- blank, rather than staying optional forever on a document meant to be
+-- sent to someone.
+alter table public.featured_payment_requests
+  add column if not exists billing_address text;
+
 alter table public.featured_payment_requests enable row level security;
 -- No policies — service_role-only, same pattern as notifications/
 -- business_application_statuses. Purely internal, nothing public reads it.
