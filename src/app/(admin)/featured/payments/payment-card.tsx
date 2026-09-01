@@ -18,6 +18,7 @@ function formatDate(iso: string): string {
 
 export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [activateOpen, setActivateOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [editingAddress, setEditingAddress] = useState(false);
@@ -51,6 +52,7 @@ export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
     startTransition(async () => {
       const result = await markPaidAndActivateFeaturedAction(payment.id);
       if (result?.error) setError(result.error);
+      setActivateOpen(false);
     });
   };
 
@@ -172,12 +174,21 @@ export function PaymentCard({ payment }: { payment: FeaturedPaymentRequest }) {
             <>
               <button
                 type="button"
-                onClick={handleMarkPaidAndActivate}
+                onClick={() => setActivateOpen(true)}
                 disabled={isPending}
                 className="rounded-lg privi-gold-border border bg-teal px-3 py-1.5 text-xs font-medium text-ivory [--gold-border-bg:var(--color-teal)] disabled:opacity-60"
               >
                 {isPending ? "Working…" : "Mark paid & activate Featured"}
               </button>
+              <ConfirmDialog
+                open={activateOpen}
+                title={`Mark paid & switch on Featured for ${payment.business_name}?`}
+                description="This does two things at once, and neither undoes automatically: it goes live as Featured immediately, and it's recorded as real earnings. Double-check this is the right invoice before continuing — if it isn't, you'd need to turn Featured back off from the business's own page afterward."
+                confirmLabel={isPending ? "Working…" : "Yes, mark paid & activate"}
+                isPending={isPending}
+                onCancel={() => setActivateOpen(false)}
+                onConfirm={handleMarkPaidAndActivate}
+              />
               <button
                 type="button"
                 onClick={handleToggle}

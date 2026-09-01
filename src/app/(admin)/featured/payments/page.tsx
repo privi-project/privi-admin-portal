@@ -16,7 +16,7 @@ export default async function FeaturedPaymentsPage() {
         ← Back to Featured
       </NavLink>
 
-      <h1 className="mt-2 text-lg font-medium">Featured payments</h1>
+      <h1 className="mt-2 text-lg font-medium">Invoicing</h1>
       <p className="mt-1 text-sm text-muted-dark">
         Track invoices for Featured Placement deals you&apos;ve agreed —
         separate from the earnings total on the main Featured page, which

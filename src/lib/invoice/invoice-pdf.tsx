@@ -72,6 +72,31 @@ const styles = StyleSheet.create({
     borderTopColor: HAIRLINE,
     paddingTop: 10,
   },
+  stamp: {
+    position: "absolute",
+    top: 120,
+    right: 70,
+    borderWidth: 3,
+    borderColor: TEAL,
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 18,
+    transform: "rotate(-14deg)",
+    opacity: 0.85,
+  },
+  stampText: {
+    fontSize: 22,
+    fontFamily: "Helvetica-Bold",
+    color: TEAL,
+    letterSpacing: 3,
+  },
+  stampDate: {
+    fontSize: 7,
+    color: TEAL,
+    textAlign: "center",
+    marginTop: 2,
+    letterSpacing: 0.5,
+  },
 });
 
 function formatDate(iso: string): string {
@@ -94,6 +119,13 @@ export function InvoicePdf({
   return (
     <Document title={`${invoiceNumber} — ${payment.business_name}`}>
       <Page size="A4" style={styles.page}>
+        {payment.status === "paid" && (
+          <View style={styles.stamp} fixed>
+            <Text style={styles.stampText}>PAID</Text>
+            {payment.paid_at && <Text style={styles.stampDate}>{formatDate(payment.paid_at)}</Text>}
+          </View>
+        )}
+
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.brand}>PRIVI</Text>

@@ -55,7 +55,7 @@ export default async function FeaturedPage({
         href="/featured/payments"
         className="inline-flex items-center gap-2 rounded-lg privi-gold-border border bg-teal px-4 py-2 text-sm font-medium text-ivory [--gold-border-bg:var(--color-teal)]"
       >
-        Track payments
+        Invoicing
         {unpaidCount > 0 && (
           <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-ivory px-1.5 text-xs font-semibold text-teal">
             {unpaidCount}
