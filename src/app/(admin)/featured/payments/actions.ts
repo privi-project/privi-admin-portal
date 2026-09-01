@@ -24,6 +24,7 @@ export async function createPaymentRequestAction(
   const durationMonths = Number(formData.get("duration_months"));
   const amountGbp = Number(formData.get("amount_gbp"));
   const invoiceNumber = String(formData.get("invoice_number") ?? "").trim() || null;
+  const billingAddress = String(formData.get("billing_address") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
   if (!isRequired(businessName)) return { error: "Business name is required." };
@@ -41,6 +42,7 @@ export async function createPaymentRequestAction(
     duration_months: durationMonths,
     amount_gbp: amountGbp,
     invoice_number: invoiceNumber,
+    billing_address: billingAddress,
     notes,
   });
 
@@ -148,6 +150,64 @@ export async function markPaidAndActivateFeaturedAction(paymentId: string): Prom
   revalidatePath(`/businesses/${payment.business_id}/edit`);
   revalidatePath("/businesses");
   return undefined;
+}
+
+/**
+ * Standalone update for the one field that can genuinely be missing on a
+ * row created before an invoice was needed — billing_address was added
+ * after this feature already had real rows in it, and nothing else here
+ * lets you edit a payment request once created (business_name, amount
+ * etc. are treated as fixed once agreed, same as everywhere else in this
+ * project — only undecided things are editable).
+ */
+export async function updateBillingAddressAction(paymentId: string, billingAddress: string) {
+  const adminClient = createAdminClient();
+  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
+
+  const trimmed = billingAddress.trim();
+  if (!trimmed) return { error: "Enter a billing address." };
+
+  await adminClient
+    .from("featured_payment_requests")
+    .update({ billing_address: trimmed, updated_at: new Date().toISOString() })
+    .eq("id", paymentId);
+
+  revalidatePath("/featured/payments");
+  return undefined;
+}
+
+/**
+ * Called from the invoice PDF route, not directly from a form — an invoice
+ * number was optional at creation time (deals get agreed before every
+ * detail is nailed down), but a document meant to actually be sent to
+ * someone needs one. Generated once, on first download, and persisted so
+ * re-downloading later always shows the same number rather than a fresh
+ * one each time.
+ */
+export async function ensureInvoiceNumberAction(paymentId: string): Promise<string> {
+  const adminClient = createAdminClient();
+  if (!adminClient) throw new Error("Admin Supabase client is not configured.");
+
+  const { data: payment } = await adminClient
+    .from("featured_payment_requests")
+    .select("invoice_number, created_at")
+    .eq("id", paymentId)
+    .maybeSingle();
+
+  if (!payment) throw new Error("Invoice not found.");
+  if (payment.invoice_number) return payment.invoice_number;
+
+  const year = new Date(payment.created_at).getFullYear();
+  const shortId = paymentId.replace(/-/g, "").slice(0, 6).toUpperCase();
+  const generated = `PPL-${year}-${shortId}`;
+
+  await adminClient
+    .from("featured_payment_requests")
+    .update({ invoice_number: generated })
+    .eq("id", paymentId);
+
+  revalidatePath("/featured/payments");
+  return generated;
 }
 
 /** Hard delete — only while still unpaid. A payment once marked Paid is a

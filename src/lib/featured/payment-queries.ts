@@ -10,6 +10,7 @@ export type FeaturedPaymentRequest = {
   duration_months: 1 | 3;
   amount_gbp: number;
   invoice_number: string | null;
+  billing_address: string | null;
   status: FeaturedPaymentStatus;
   paid_at: string | null;
   notes: string | null;
