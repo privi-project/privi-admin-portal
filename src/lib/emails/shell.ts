@@ -40,7 +40,7 @@ export function emailShell(heading: string, bodyHtml: string, footerHtml: string
               </td>
             </tr>
             <tr>
-              <td style="padding:8px 32px 24px 32px;font-size:14px;line-height:1.6;color:${CHARCOAL};text-align:center;">
+              <td style="padding:8px 32px 24px 32px;font-size:14px;line-height:1.6;color:${CHARCOAL};text-align:left;">
                 ${bodyHtml}
                 ${SIGN_OFF}
               </td>
