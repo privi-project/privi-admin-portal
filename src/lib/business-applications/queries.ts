@@ -11,6 +11,11 @@ export type BusinessApplication = {
   message: string | null;
   status: string;
   notes: string | null;
+  /** 'form' (the public site's own submission — the default) or 'manual'
+   * (added by the founder for someone they're already in conversation
+   * with, not yet a real form submission). Purely a display distinction —
+   * behaves identically either way from here on. */
+  source: "form" | "manual";
   created_at: string;
   updated_at: string;
 };
