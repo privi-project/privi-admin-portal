@@ -1,20 +1,22 @@
 import { NavLink } from "@/components/nav-link";
 import { listBusinesses } from "@/lib/businesses/queries";
-import { listLiveAreas, getWaitlistWithinRadius } from "@/lib/live-areas/queries";
+import { listLiveAreas, listBusinessLocationsForMap, getWaitlistWithinRadius } from "@/lib/live-areas/queries";
 import { LiveAreaForm } from "./live-area-form";
 import { LiveAreaCard } from "./live-area-card";
 
 export default async function LiveAreasPage() {
-  const [areas, businesses] = await Promise.all([listLiveAreas(), listBusinesses()]);
+  const [areas, businesses, businessPoints] = await Promise.all([
+    listLiveAreas(),
+    listBusinesses(),
+    listBusinessLocationsForMap(),
+  ]);
 
   const areasWithCounts = await Promise.all(
     areas.map(async (area) => {
       const pendingInvite = await getWaitlistWithinRadius(area.latitude, area.longitude, area.radiusMiles, {
         onlyNotYetNotified: true,
       });
-      const allWithinRadius = await getWaitlistWithinRadius(area.latitude, area.longitude, area.radiusMiles);
-      const pendingReminder = allWithinRadius.filter((r) => r.notified_at).length;
-      return { area, pendingInvite: pendingInvite.length, pendingReminder };
+      return { area, pendingInvite: pendingInvite.length };
     }),
   );
 
@@ -30,10 +32,22 @@ export default async function LiveAreasPage() {
         sign-up page has their postcode checked against the areas below; only a postcode within one of
         these gets through to real sign-up, everyone else lands on the waitlist. Add an area once you're
         genuinely happy with the businesses you've signed up nearby — this isn't automatic, it's your
-        call each time.
+        call each time. Marking an area live sends the invite email straight away to everyone already
+        waiting nearby, and anyone still on the list 5 days later gets one automatic reminder — nothing
+        more to remember once you've clicked the button below.
       </p>
 
-      <LiveAreaForm businesses={businesses.map((b) => ({ id: b.id, name: b.name }))} />
+      <LiveAreaForm
+        businesses={businesses.map((b) => ({ id: b.id, name: b.name }))}
+        businessPoints={businessPoints}
+        liveCircles={areas.map((a) => ({
+          id: a.id,
+          label: a.label,
+          latitude: a.latitude,
+          longitude: a.longitude,
+          radiusMiles: a.radiusMiles,
+        }))}
+      />
 
       <div className="mt-8 flex flex-col gap-4">
         {areasWithCounts.length === 0 ? (
@@ -41,8 +55,8 @@ export default async function LiveAreasPage() {
             No live areas yet — every postcode currently lands on the waitlist, same as before.
           </p>
         ) : (
-          areasWithCounts.map(({ area, pendingInvite, pendingReminder }) => (
-            <LiveAreaCard key={area.id} area={area} pendingInvite={pendingInvite} pendingReminder={pendingReminder} />
+          areasWithCounts.map(({ area, pendingInvite }) => (
+            <LiveAreaCard key={area.id} area={area} pendingInvite={pendingInvite} />
           ))
         )}
       </div>

@@ -12,6 +12,34 @@ export type LiveArea = {
   createdAt: string;
 };
 
+export type BusinessMapPoint = { id: string; name: string; latitude: number; longitude: number };
+
+/** For the coverage map's business picker — only businesses with a real
+ * geocoded location can anchor an area (same rule createLiveAreaAction
+ * enforces), so national/online-only businesses with no coordinates are
+ * left out here rather than shown as an option that would just error. */
+export async function listBusinessLocationsForMap(): Promise<BusinessMapPoint[]> {
+  const adminClient = createAdminClient();
+  if (!adminClient) return [];
+
+  const { data } = await adminClient
+    .from("business_locations")
+    .select("business_id, latitude, longitude, businesses(name)")
+    .not("latitude", "is", null)
+    .order("created_at", { ascending: true });
+
+  type Row = { business_id: string; latitude: number; longitude: number; businesses: { name: string } | null };
+
+  const seen = new Set<string>();
+  const points: BusinessMapPoint[] = [];
+  for (const row of (data as unknown as Row[]) ?? []) {
+    if (seen.has(row.business_id) || !row.businesses) continue; // first (earliest) location per business only
+    seen.add(row.business_id);
+    points.push({ id: row.business_id, name: row.businesses.name, latitude: row.latitude, longitude: row.longitude });
+  }
+  return points;
+}
+
 export async function listLiveAreas(): Promise<LiveArea[]> {
   const adminClient = createAdminClient();
   if (!adminClient) return [];

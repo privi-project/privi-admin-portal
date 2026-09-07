@@ -24,12 +24,18 @@ export function liveAreaInviteEmail(areaLabel: string): { subject: string; html:
   };
 }
 
-export function liveAreaReminderEmail(areaLabel: string): { subject: string; html: string } {
+// No area name here deliberately — notified_at/reminded_at live on the
+// waitlist row itself, not per-area, so a person covered by more than
+// one overlapping area has no single "which area sent this" answer.
+// Matches the original global reminder's own copy for the same reason.
+// Sent automatically 5 days after the invite by
+// api/cron/waitlist-reminders, not manually — see that route.
+export function waitlistReminderEmail(): { subject: string; html: string } {
   return {
-    subject: `Still time to join Privi in ${areaLabel}`,
+    subject: "Still time to join Privi",
     html: emailShell(
       "Still on the list",
-      `<p style="margin:0;">Just a friendly reminder — Privi membership sign-up is open in ${areaLabel}, and your spot is still here whenever you're ready.</p>
+      `<p style="margin:0;">Just a friendly reminder — Privi membership sign-up is open for your area, and your spot is still here whenever you're ready.</p>
        ${linkButton("Sign up now", SIGNUP_URL)}`,
       STANDARD_FOOTER,
     ),
