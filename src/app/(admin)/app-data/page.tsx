@@ -34,7 +34,16 @@ export default async function AppDataPage() {
         >
           <span className="text-sm font-medium">Waitlist</span>
           <span className="text-xs text-muted-dark">
-            Notify everyone waiting once sign-up is genuinely live.
+            See who&apos;s waiting and where they are, by postcode.
+          </span>
+        </NavLink>
+        <NavLink
+          href="/app-data/live-areas"
+          className="flex flex-col gap-1 rounded-2xl border border-border-hairline bg-white p-4 hover:border-gold"
+        >
+          <span className="text-sm font-medium">Live areas</span>
+          <span className="text-xs text-muted-dark">
+            Controls where sign-up is actually open, and invites waitlist members once an area's ready.
           </span>
         </NavLink>
       </div>

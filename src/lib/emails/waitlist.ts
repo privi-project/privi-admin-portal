@@ -4,32 +4,32 @@ const SIGNUP_URL = "https://privi.info/signup";
 const STANDARD_FOOTER =
   "Need help? Visit our Help Centre.<br />This is an automated message from Privi — please don't reply to this email.";
 
-// No first name is captured on the waitlist (waitlist_signups only ever
-// stored an email — see that table's own schema comment), so neither of
-// these greets by name, matching waitlistJoinedEmail's own existing
-// no-name pattern rather than introducing an inconsistent "Hi there".
-export function waitlistLiveEmail(): { subject: string; html: string } {
+// Area-scoped versions (2026-09-06) — see admin-portal/supabase/
+// schema.sql's live_areas comment. Sent from the Live Areas page
+// (src/app/(admin)/app-data/live-areas/), not the old blunt "everyone"
+// buttons below, which are now retired in favour of these. The
+// /signup link still works exactly the same way for these recipients —
+// they'll pass the postcode-coverage check by construction, since
+// they're only ever targeted because their stored postcode already
+// falls inside the area's radius.
+export function liveAreaInviteEmail(areaLabel: string): { subject: string; html: string } {
   return {
-    subject: "Privi is live — you can sign up now",
+    subject: `Privi is live in ${areaLabel} — join now`,
     html: emailShell(
-      "We're live",
-      `<p style="margin:0;">You joined the Privi waitlist a while back, and membership sign-up is now officially open. Thanks for your patience — we'd love to have you.</p>
+      "We've reached you",
+      `<p style="margin:0;">You joined the Privi waitlist a while back, and we've now launched in ${areaLabel} — membership sign-up is open for your area.</p>
        ${linkButton("Sign up now", SIGNUP_URL)}`,
       STANDARD_FOOTER,
     ),
   };
 }
 
-// Sent once, only to whoever hasn't signed up since the live email
-// above — deliberately a single reminder, not a repeating nudge (see
-// schema.sql's own comment on reminded_at: this is a one-time-use
-// feature, not an ongoing campaign).
-export function waitlistReminderEmail(): { subject: string; html: string } {
+export function liveAreaReminderEmail(areaLabel: string): { subject: string; html: string } {
   return {
-    subject: "Still time to join Privi",
+    subject: `Still time to join Privi in ${areaLabel}`,
     html: emailShell(
       "Still on the list",
-      `<p style="margin:0;">Just a friendly reminder — Privi membership sign-up is open, and your spot is still here whenever you're ready.</p>
+      `<p style="margin:0;">Just a friendly reminder — Privi membership sign-up is open in ${areaLabel}, and your spot is still here whenever you're ready.</p>
        ${linkButton("Sign up now", SIGNUP_URL)}`,
       STANDARD_FOOTER,
     ),

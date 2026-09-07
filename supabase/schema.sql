@@ -1086,6 +1086,57 @@ alter table public.waitlist_signups
   add column if not exists notified_at timestamptz,
   add column if not exists reminded_at timestamptz;
 
+-- Live Areas (2026-09-06) — supersedes the "one-time pre-launch"
+-- framing above. waitlist_signups + this table together become the
+-- PERMANENT replacement for NEXT_PUBLIC_SIGNUP_OPEN's blunt site-wide
+-- gate: instead of a single "is sign-up open at all" boolean, coverage
+-- is now checked per-postcode against this table on every /signup visit
+-- (website/src/lib/coverage.ts). While this table is empty, every
+-- postcode is uncovered — identical behaviour to today's gate — so
+-- there's no cutover moment, just areas added one at a time as the
+-- founder actually signs up businesses there (Privi launch checklist
+-- steps 17/20: "walk the first area" / "repeat in the next area").
+--
+-- A live area is anchored to one representative business's location
+-- (founder's own pick — matches the existing Notifications 'area'
+-- audience-targeting UX exactly, same reference-business + radius
+-- pattern) rather than a hand-drawn shape. latitude/longitude are
+-- resolved and stored ONCE at creation time (denormalized snapshot,
+-- same reasoning as admin_activity_log's admin_email/entity_label) so
+-- this survives the reference business later moving or being deleted,
+-- and so website's coverage check never needs a join back to
+-- business_locations.
+create table if not exists public.live_areas (
+  id uuid primary key default gen_random_uuid(),
+  label text not null,
+  reference_business_id uuid references public.businesses(id) on delete set null,
+  latitude double precision not null,
+  longitude double precision not null,
+  radius_miles integer not null default 10,
+  created_at timestamptz not null default now()
+);
+
+alter table public.live_areas enable row level security;
+
+-- Public read: website needs this both to check coverage during
+-- sign-up (src/lib/coverage.ts) and to render the public "Where Privi
+-- Operates" page/homepage section. Only label + rough centre point +
+-- radius are ever exposed — nothing sensitive.
+create policy "Anyone can view live areas"
+  on public.live_areas for select
+  using (true);
+
+-- Extend waitlist_signups with a real location signal — previously
+-- email-only (a one-time capture with nothing to target). postcode is
+-- the outward code only (e.g. "SE1", not a full address — minimal
+-- collection, matches the App's own existing preferred_area pattern),
+-- geocoded ONCE at signup time and stored here so area-targeting never
+-- has to re-call the Geocoding API for the same person twice.
+alter table public.waitlist_signups
+  add column if not exists postcode text,
+  add column if not exists latitude double precision,
+  add column if not exists longitude double precision;
+
 -- subscription_started_at marks the start of the member's CURRENT
 -- unbroken paid stretch — set by the website's Stripe webhook on every
 -- genuine first payment, resetting on a cancel-then-resubscribe rather
