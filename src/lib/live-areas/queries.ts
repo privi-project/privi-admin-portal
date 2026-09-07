@@ -22,11 +22,21 @@ export async function listBusinessLocationsForMap(): Promise<BusinessMapPoint[]>
   const adminClient = createAdminClient();
   if (!adminClient) return [];
 
-  const { data } = await adminClient
+  // Disambiguated FK name required — businesses<->business_locations has
+  // two relationships (the direct one, and a second via featured_locations),
+  // so the plain "businesses(name)" embed silently errors with PGRST201
+  // ("more than one relationship was found"). Same fix already applied
+  // elsewhere in this codebase for the same underlying schema shape.
+  const { data, error } = await adminClient
     .from("business_locations")
-    .select("business_id, latitude, longitude, businesses(name)")
+    .select("business_id, latitude, longitude, businesses!business_locations_business_id_fkey(name)")
     .not("latitude", "is", null)
     .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("listBusinessLocationsForMap failed", error);
+    return [];
+  }
 
   type Row = { business_id: string; latitude: number; longitude: number; businesses: { name: string } | null };
 
