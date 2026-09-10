@@ -1192,3 +1192,31 @@ create index if not exists business_contacts_categories_idx
 alter table public.business_applications
   add column if not exists source text not null default 'form'
     check (source in ('form', 'manual'));
+
+-- Personal calendar / diary (2026-09-10). Founder-created dated events
+-- for outreach follow-ups and general to-dos ("visit Imagine Cafe
+-- again", "chase Ninja Warrior form", "order more window stickers").
+-- Deliberately a plain calendar, not wired into business_applications or
+-- the Dashboard Action Centre (which is auto-generated system alerts).
+-- Founder asked for an Outlook-style diary they check each morning,
+-- nothing more. Single date per event (no multi-day spanning at v1).
+-- start_time/end_time optional so an all-day "visit X" works as easily
+-- as a timed "call at 14:00". Service-role-only, like notifications.
+create table if not exists public.calendar_events (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  event_date date not null,
+  start_time time,
+  end_time time,
+  notes text,
+  is_done boolean not null default false,
+  created_by uuid references public.admin_users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.calendar_events enable row level security;
+-- No policies. service_role-only, same as notifications/live_areas.
+
+create index if not exists calendar_events_event_date_idx
+  on public.calendar_events (event_date);

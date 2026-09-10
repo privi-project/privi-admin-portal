@@ -16,6 +16,7 @@ import { NavLink } from "@/components/nav-link";
 // audit and config. Purely a reorder — no items added or removed.
 const NAV_ITEMS = [
   { href: "/home", label: "Dashboard" },
+  { href: "/calendar", label: "Calendar" },
   { href: "/business-applications", label: "Applications" },
   { href: "/businesses", label: "Businesses" },
   { href: "/featured", label: "Featured" },
